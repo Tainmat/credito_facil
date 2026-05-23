@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { supabase } from '../../lib/supabase'
 
 // ─── Constants ────────────────────────────────────────────
 export const AUTH_KEY = 'microcredito_admin_session'
@@ -56,6 +57,34 @@ export type TransacaoCaixa = {
   criadaEm: string
 }
 
+export interface DbSolicitacao {
+  id: string
+  status: string
+  created_at: string
+  updated_at: string
+  solicitante_nome: string | null
+  solicitante_cpf: string | null
+  solicitante_telefone: string | null
+  solicitante_valor: number | null
+  solicitante_pix: string | null
+  solicitante_data_pagamento: string | null
+  contato_nome: string | null
+  contato_cpf: string | null
+  contato_telefone: string | null
+  contato_relacionamento: string | null
+  pagamento_pago: boolean | null
+  pagamento_valor_pago: number | null
+  pagamento_pago_em: string | null
+}
+
+export interface DbTransacaoCaixa {
+  id: string
+  tipo: string
+  valor: number
+  descricao: string | null
+  created_at: string
+}
+
 export type ResumoJuros = {
   valorEmprestado: number
   valorComJuros: number
@@ -101,7 +130,14 @@ export function classeStatus(status: StatusSolicitacao): string {
 
 export function numeroMoeda(valor: string | undefined | null): number {
   if (!valor) return 0
-  return parseFloat(valor.replace(/[^\d,.-]/g, '').replace(',', '.')) || 0
+  const limpo = valor.replace(/[^\d,.]/g, '')
+  if (limpo.includes(',') && limpo.includes('.')) {
+    return parseFloat(limpo.replace(/\./g, '').replace(',', '.')) || 0
+  }
+  if (limpo.includes(',')) {
+    return parseFloat(limpo.replace(',', '.')) || 0
+  }
+  return parseFloat(limpo) || 0
 }
 
 export function formatarMoeda(valor: number): string {
@@ -283,6 +319,34 @@ export function htmlEscape(valor: unknown): string {
     .replace(/'/g, '&#039;')
 }
 
+export function mapearSolicitacao(db: DbSolicitacao): Solicitacao {
+  return {
+    id: db.id,
+    status: db.status,
+    criadaEm: db.created_at,
+    atualizadoEm: db.updated_at,
+    solicitante: {
+      nome: db.solicitante_nome ?? undefined,
+      cpf: db.solicitante_cpf ?? undefined,
+      telefone: db.solicitante_telefone ?? undefined,
+      valor: db.solicitante_valor?.toString() || '0',
+      pix: db.solicitante_pix ?? undefined,
+      dataPagamento: db.solicitante_data_pagamento ?? undefined
+    },
+    contato: {
+      nome: db.contato_nome ?? undefined,
+      cpf: db.contato_cpf ?? undefined,
+      telefone: db.contato_telefone ?? undefined,
+      relacionamento: db.contato_relacionamento ?? undefined
+    },
+    pagamento: {
+      pago: db.pagamento_pago ?? false,
+      valorPago: db.pagamento_valor_pago?.toString() || '',
+      pagoEm: db.pagamento_pago_em ?? undefined
+    }
+  }
+}
+
 // ─── Hook ─────────────────────────────────────────────────
 export function usePainelAdmin() {
   const router = useRouter()
@@ -297,35 +361,37 @@ export function usePainelAdmin() {
   const cardsMinimizadosRef = useRef(new Set<string>())
   const [, forceUpdate] = useState(0)
 
-  // Auth check
+  // Auth check & Load data
   useEffect(() => {
-    const session = localStorage.getItem(AUTH_KEY)
-    if (!session) {
-      router.push('/login')
-      return
+    async function checkAuth() {
+      const {
+        data: { session }
+      } = await supabase.auth.getSession()
+      if (!session) {
+        router.push('/login')
+        return
+      }
+      setIsAuthenticated(true)
+      recarregar()
     }
-    setIsAuthenticated(true)
-  }, [router])
 
-  // Load data
-  useEffect(() => {
-    if (!isAuthenticated) return
-    recarregar()
-    const fin: Financeiro = JSON.parse(
-      localStorage.getItem(FINANCEIRO_KEY) || '{}'
-    )
-    if (fin.caixa) {
-      setInputCaixa(fin.caixa)
-      setCaixaSalvo(!!fin.caixaSalvo)
-    } else {
-      setInputCaixa('R$ 0,00')
-      setCaixaSalvo(true)
+    checkAuth()
+
+    const {
+      data: { subscription }
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        setIsAuthenticated(false)
+        router.push('/login')
+      } else {
+        setIsAuthenticated(true)
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe()
     }
-    const txs = JSON.parse(
-      localStorage.getItem('microcredito_transacoes_caixa') || '[]'
-    )
-    setTransacoesCaixa(txs)
-  }, [isAuthenticated]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [router]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Close modal on Escape
   useEffect(() => {
@@ -348,143 +414,210 @@ export function usePainelAdmin() {
     }
   }, [modalAberta])
 
-  function recarregar() {
-    const data: Solicitacao[] = JSON.parse(
-      localStorage.getItem(STORAGE_KEY) || '[]'
-    )
-    setSolicitacoes(data)
+  async function recarregar() {
+    const { data: dbSolicitacoes, error: sError } = await supabase
+      .from('solicitacoes')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (sError) {
+      console.error('Erro ao carregar solicitações do Supabase:', sError)
+      return
+    }
+
+    const { data: dbTransacoes, error: tError } = await supabase
+      .from('transacoes_caixa')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (tError) {
+      console.error('Erro ao carregar transações de caixa do Supabase:', tError)
+      return
+    }
+
+    const solicitacoesMapeadas = (dbSolicitacoes || []).map(mapearSolicitacao)
+    setSolicitacoes(solicitacoesMapeadas)
+
+    const txsMapeadas = (dbTransacoes || []).map((tx: DbTransacaoCaixa) => ({
+      id: tx.id,
+      tipo: tx.tipo as 'aporte' | 'resgate',
+      valor: Number(tx.valor),
+      descricao: tx.descricao || '',
+      criadaEm: tx.created_at
+    }))
+
+    setTransacoesCaixa(txsMapeadas)
+
+    // Calculate current caixa balance from the transaction history
+    const totalAportes = txsMapeadas
+      .filter((t) => t.tipo === 'aporte')
+      .reduce((acc, t) => acc + t.valor, 0)
+    const totalResgates = txsMapeadas
+      .filter((t) => t.tipo === 'resgate')
+      .reduce((acc, t) => acc + t.valor, 0)
+    const saldoCaixa = totalAportes - totalResgates
+
+    setInputCaixa(formatarMoeda(saldoCaixa))
+    setCaixaSalvo(true)
   }
 
-  function sair() {
-    localStorage.removeItem(AUTH_KEY)
+  async function sair() {
+    await supabase.auth.signOut()
     router.push('/login')
   }
 
   function salvarFinanceiro() {
-    const formatted = formatarCampoCaixa(inputCaixa)
-    setInputCaixa(formatted)
-    setCaixaSalvo(true)
-    localStorage.setItem(
-      FINANCEIRO_KEY,
-      JSON.stringify({ caixa: formatted, caixaSalvo: true })
-    )
+    // Obsoleto, mas mantido para retrocompatibilidade
   }
 
   function editarCaixa() {
-    setCaixaSalvo(false)
+    // Obsoleto, mas mantido para retrocompatibilidade
   }
 
-  function realizarTransacaoCaixa(
+  async function realizarTransacaoCaixa(
     tipo: 'aporte' | 'resgate',
     valor: number,
     descricao: string
-  ): boolean {
+  ): Promise<boolean> {
     if (valor <= 0) return false
 
-    const caixaAtual = numeroMoeda(inputCaixa)
-    let novoCaixa = caixaAtual
-    if (tipo === 'aporte') {
-      novoCaixa += valor
-    } else {
-      if (caixaAtual < valor) {
-        alert('Saldo de caixa insuficiente para realizar o resgate!')
-        return false
-      }
-      novoCaixa -= valor
+    // Fetch transactions to verify balance for withdrawals
+    const { data: txs, error: fetchError } = await supabase
+      .from('transacoes_caixa')
+      .select('tipo, valor')
+
+    if (fetchError) {
+      console.error('Erro ao carregar transações para validação:', fetchError)
+      return false
     }
 
-    const formattedCaixa = formatarMoeda(novoCaixa)
-    setInputCaixa(formattedCaixa)
-    setCaixaSalvo(true)
-    localStorage.setItem(
-      FINANCEIRO_KEY,
-      JSON.stringify({ caixa: formattedCaixa, caixaSalvo: true })
-    )
+    const totalAportes = (txs || [])
+      .filter((t) => t.tipo === 'aporte')
+      .reduce((acc, t) => acc + Number(t.valor), 0)
+    const totalResgates = (txs || [])
+      .filter((t) => t.tipo === 'resgate')
+      .reduce((acc, t) => acc + Number(t.valor), 0)
+    const caixaAtual = totalAportes - totalResgates
 
-    const novaTx: TransacaoCaixa = {
-      id: `TX-${Date.now()}`,
-      tipo,
-      valor,
-      descricao:
-        descricao.trim() ||
-        (tipo === 'aporte' ? 'Aporte de Capital' : 'Resgate de Capital'),
-      criadaEm: new Date().toISOString()
+    if (tipo === 'resgate' && caixaAtual < valor) {
+      alert('Saldo de caixa insuficiente para realizar o resgate!')
+      return false
     }
 
-    const novasTxs = [novaTx, ...transacoesCaixa]
-    setTransacoesCaixa(novasTxs)
-    localStorage.setItem(
-      'microcredito_transacoes_caixa',
-      JSON.stringify(novasTxs)
-    )
+    const { error: insertError } = await supabase
+      .from('transacoes_caixa')
+      .insert({
+        id: `TX-${Date.now()}`,
+        tipo,
+        valor,
+        descricao:
+          descricao.trim() ||
+          (tipo === 'aporte' ? 'Aporte de Capital' : 'Resgate de Capital'),
+        created_at: new Date().toISOString()
+      })
+
+    if (insertError) {
+      console.error('Erro ao registrar transação no Supabase:', insertError)
+      return false
+    }
+
+    await recarregar()
     return true
   }
 
-  function atualizarStatus(id: string, status: StatusSolicitacao) {
-    const data: Solicitacao[] = JSON.parse(
-      localStorage.getItem(STORAGE_KEY) || '[]'
-    )
-    const updated = data.map((s) =>
-      s.id === id ? { ...s, status, atualizadoEm: new Date().toISOString() } : s
-    )
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
-    setSolicitacoes(updated)
-    if (modalAberta?.id === id) {
-      setModalAberta({
-        ...modalAberta,
+  async function atualizarStatus(id: string, status: StatusSolicitacao) {
+    const { error } = await supabase
+      .from('solicitacoes')
+      .update({
         status,
-        atualizadoEm: new Date().toISOString()
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+
+    if (error) {
+      console.error('Erro ao atualizar status no Supabase:', error)
+      return
+    }
+
+    await recarregar()
+
+    if (modalAberta?.id === id) {
+      setModalAberta((m) => {
+        if (!m) return null
+        return {
+          ...m,
+          status,
+          atualizadoEm: new Date().toISOString()
+        }
       })
     }
   }
 
-  function registrarPagamento(
+  async function registrarPagamento(
     id: string,
     valorPago: string,
     dataPagamento: Date
   ) {
-    const data: Solicitacao[] = JSON.parse(
-      localStorage.getItem(STORAGE_KEY) || '[]'
-    )
-    const updated = data.map((s) =>
-      s.id === id
-        ? {
-            ...s,
-            pagamento: {
-              pago: true,
-              valorPago,
-              pagoEm: dataPagamento.toISOString()
-            },
-            atualizadoEm: new Date().toISOString()
-          }
-        : s
-    )
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
-    setSolicitacoes(updated)
-    const updatedItem = updated.find((s) => s.id === id)
-    if (modalAberta?.id === id && updatedItem) {
-      setModalAberta(updatedItem)
+    const { error } = await supabase
+      .from('solicitacoes')
+      .update({
+        pagamento_pago: true,
+        pagamento_valor_pago: numeroMoeda(valorPago),
+        pagamento_pago_em: dataPagamento.toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+
+    if (error) {
+      console.error('Erro ao registrar pagamento no Supabase:', error)
+      return
+    }
+
+    await recarregar()
+
+    if (modalAberta?.id === id) {
+      setModalAberta((m) => {
+        if (!m) return null
+        return {
+          ...m,
+          pagamento: {
+            pago: true,
+            valorPago,
+            pagoEm: dataPagamento.toISOString()
+          },
+          atualizadoEm: new Date().toISOString()
+        }
+      })
     }
   }
 
-  function limparPagamento(id: string) {
-    const data: Solicitacao[] = JSON.parse(
-      localStorage.getItem(STORAGE_KEY) || '[]'
-    )
-    const updated = data.map((s) =>
-      s.id === id
-        ? {
-            ...s,
-            pagamento: { pago: false, valorPago: '', pagoEm: '' },
-            atualizadoEm: new Date().toISOString()
-          }
-        : s
-    )
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
-    setSolicitacoes(updated)
-    const updatedItem = updated.find((s) => s.id === id)
-    if (modalAberta?.id === id && updatedItem) {
-      setModalAberta(updatedItem)
+  async function limparPagamento(id: string) {
+    const { error } = await supabase
+      .from('solicitacoes')
+      .update({
+        pagamento_pago: false,
+        pagamento_valor_pago: null,
+        pagamento_pago_em: null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+
+    if (error) {
+      console.error('Erro ao limpar pagamento no Supabase:', error)
+      return
+    }
+
+    await recarregar()
+
+    if (modalAberta?.id === id) {
+      setModalAberta((m) => {
+        if (!m) return null
+        return {
+          ...m,
+          pagamento: { pago: false, valorPago: '', pagoEm: '' },
+          atualizadoEm: new Date().toISOString()
+        }
+      })
     }
   }
 
@@ -503,14 +636,16 @@ export function usePainelAdmin() {
     }
   }, [])
 
-  function removerSolicitacao(id: string) {
+  async function removerSolicitacao(id: string) {
     if (!window.confirm('Remover esta solicitacao do painel?')) return
-    const data: Solicitacao[] = JSON.parse(
-      localStorage.getItem(STORAGE_KEY) || '[]'
-    )
-    const updated = data.filter((s) => s.id !== id)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
-    setSolicitacoes(updated)
+    const { error } = await supabase.from('solicitacoes').delete().eq('id', id)
+
+    if (error) {
+      console.error('Erro ao remover solicitação no Supabase:', error)
+      return
+    }
+
+    await recarregar()
     if (modalAberta?.id === id) setModalAberta(null)
   }
 

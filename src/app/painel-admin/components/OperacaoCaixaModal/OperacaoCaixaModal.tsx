@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
-import { formatarCampoCaixa } from '../../usePainelAdmin'
+import { formatarCampoCaixa, numeroMoeda } from '../../usePainelAdmin'
 
 interface OperacaoCaixaModalProps {
   tipo: 'aporte' | 'resgate'
@@ -9,7 +9,7 @@ interface OperacaoCaixaModalProps {
     tipo: 'aporte' | 'resgate',
     valor: number,
     descricao: string
-  ) => boolean
+  ) => Promise<boolean> | boolean
 }
 
 export function OperacaoCaixaModal({
@@ -20,15 +20,13 @@ export function OperacaoCaixaModal({
   const [valorOp, setValorOp] = useState('')
   const [descricaoOp, setDescricaoOp] = useState('')
 
-  function handleSubmit() {
-    const numVal = parseFloat(
-      valorOp.replace(/[^\d,.-]/g, '').replace(',', '.')
-    )
+  async function handleSubmit() {
+    const numVal = numeroMoeda(valorOp)
     if (!numVal || isNaN(numVal) || numVal <= 0) {
       alert('Por favor, informe um valor válido maior que zero.')
       return
     }
-    const success = onConfirm(tipo, numVal, descricaoOp)
+    const success = await onConfirm(tipo, numVal, descricaoOp)
     if (success) {
       onClose()
     }

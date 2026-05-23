@@ -13,8 +13,7 @@ import {
   ArrowRight,
   ArrowLeft
 } from 'lucide-react'
-
-const AUTH_KEY = 'microcredito_admin_session'
+import { supabase } from '../../lib/supabase'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -24,25 +23,39 @@ export default function LoginPage() {
   const [erro, setErro] = useState('')
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const session = localStorage.getItem(AUTH_KEY)
+    async function checkSession() {
+      const {
+        data: { session }
+      } = await supabase.auth.getSession()
       if (session) {
         router.replace('/painel-admin')
       }
     }
+    checkSession()
   }, [router])
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!email.trim() || !senha.trim()) {
       setErro('Informe e-mail e senha para acessar o painel.')
       return
     }
     setErro('')
-    localStorage.setItem(
-      AUTH_KEY,
-      JSON.stringify({ email, autenticadoEm: new Date().toISOString() })
-    )
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password: senha
+    })
+
+    if (error) {
+      setErro(
+        error.message === 'Invalid login credentials'
+          ? 'E-mail ou senha incorretos.'
+          : error.message
+      )
+      return
+    }
+
     router.replace('/painel-admin')
   }
 

@@ -8,6 +8,19 @@ import {
   Zap
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { supabase } from '../../lib/supabase'
+
+function numeroMoeda(v: string): number {
+  if (!v) return 0
+  const limpo = v.replace(/[^\d,.]/g, '')
+  if (limpo.includes(',') && limpo.includes('.')) {
+    return parseFloat(limpo.replace(/\./g, '').replace(',', '.')) || 0
+  }
+  if (limpo.includes(',')) {
+    return parseFloat(limpo.replace(',', '.')) || 0
+  }
+  return parseFloat(limpo) || 0
+}
 
 // ─── Constants ─────────────────────────────────────────────
 export const STORAGE_KEY = 'microcredito_solicitacoes'
@@ -155,28 +168,32 @@ export function useSolicitacao() {
     return () => document.removeEventListener('keydown', onKey)
   }, [])
 
-  function handleFinalizarSolicitacao() {
-    const requests = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
-    requests.unshift({
+  async function handleFinalizarSolicitacao() {
+    const { error } = await supabase.from('solicitacoes').insert({
       id: `SOL-${Date.now()}`,
-      criadaEm: new Date().toISOString(),
       status: 'Pendente',
-      solicitante: {
-        nome,
-        cpf,
-        telefone,
-        valor,
-        pix,
-        dataPagamento: dataPagamento ? formatISO(dataPagamento) : ''
-      },
-      contato: {
-        nome: contatoNome,
-        cpf: contatoCpf,
-        telefone: contatoTelefone,
-        relacionamento: contatoRelacionamento
-      }
+      solicitante_nome: nome,
+      solicitante_cpf: cpf,
+      solicitante_telefone: telefone,
+      solicitante_valor: numeroMoeda(valor),
+      solicitante_pix: pix,
+      solicitante_data_pagamento: dataPagamento
+        ? formatISO(dataPagamento)
+        : null,
+      contato_nome: contatoNome,
+      contato_cpf: contatoCpf,
+      contato_telefone: contatoTelefone,
+      contato_relacionamento: contatoRelacionamento
     })
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(requests))
+
+    if (error) {
+      console.error('Erro ao salvar solicitação no Supabase:', error)
+      alert(
+        'Ocorreu um erro ao enviar sua solicitação. Por favor, tente novamente.'
+      )
+      return
+    }
+
     setStep('agradecimento')
   }
 
