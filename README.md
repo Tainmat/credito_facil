@@ -1,60 +1,103 @@
-<div style="display: flex; justify-content: center;">
-  <img src="https://bilgi.com.br/wp-content/uploads/2022/11/BILGI-BRANCO-FUNDO-TRANSPARENTE-e1668796259172-300x216.png" alt="Bilgi Boilerplate" />
-</div>
+# 💸 Crédito Fácil - Microcrédito Inteligente
 
-This is a [Next.js](https://nextjs.org/) boilerplate to be used in projects for Bilgi customers [Bilgi Boilerplate](https://bilgi.com.br/).
-![ci](https://github.com/React-Avancado/boilerplate-apps-router/workflows/ci/badge.svg)
+O **Crédito Fácil** é uma plataforma de gerenciamento e concessão de microcrédito rápido e descomplicado. Ela conecta um portal de propostas para clientes a um painel administrativo seguro em tempo real, permitindo a análise de propostas de crédito, controle de fluxos de caixa (aportes/retiradas), monitoramento de pagamentos, amortizações e juros/multas por atraso.
 
-## What is inside?
+---
 
-This project uses lot of stuff as:
+## 🛠️ Stack Tecnológica
 
-- [TypeScript](https://www.typescriptlang.org/)
-- [NextJS](https://nextjs.org/)
-- [Styled Components](https://styled-components.com/)
-- [Jest](https://jestjs.io/)
-- [React Testing Library](https://testing-library.com/docs/react-testing-library/intro)
-- [Storybook](https://storybook.js.org/)
-- [Eslint](https://eslint.org/)
-- [Prettier](https://prettier.io/)
-- [Husky](https://github.com/typicode/husky)
+O projeto foi construído utilizando as ferramentas de ponta do desenvolvimento moderno:
 
-## Getting Started
+*   **Frontend (Core):** [Next.js 14 (App Router)](https://nextjs.org/) + [React 18](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/)
+*   **Estilização:** [Tailwind CSS](https://tailwindcss.com/) + [Lucide Icons](https://lucide.dev/)
+*   **Gerenciamento de Servidor & Cache:** [TanStack Query v5 (React Query)](https://tanstack.com/query/latest)
+*   **Banco de Dados & Autenticação:** [Supabase (PostgreSQL)](https://supabase.com/) rodando localmente via Docker
+*   **Comunicação em Tempo Real:** [Supabase Realtime WebSockets](https://supabase.com/docs/guides/realtime) para reatividade instantânea no dashboard administrativo.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-docker compose up --force-recreate
-```
+## 📐 Arquitetura do Projeto
 
-Open NPM -> [http://localhost:3000](http://localhost:3000) | Docker -> [http://localhost:3001](http://localhost:3001) with your browser to see the result.
+O código do projeto foi estruturado sob um desacoplamento rígido de responsabilidades e padrões de arquitetura limpa:
 
-You can start editing the page by modifying `pages/index.js`. The page auto-updates as you edit the file.
+*   **`src/api/`**: Contém a camada pura de dados e comunicação com o banco (Supabase). As telas não conhecem a existência do SDK.
+*   **`src/hooks/services/`**: Organizado em `queries` e `mutations`, contém Custom Hooks granulares focados em intenção (ex: `useAdicionarTransacaoCaixaMutation`).
+*   **`src/app/`**: Estrutura de rotas do Next.js (Portal de Propostas, Login e Painel Admin).
 
-## Commands
+---
 
-- `dev`: runs your application on `localhost:3000`
-- `build`: creates the production build version
-- `start`: starts a simple server with the build production code
-- `lint`: runs the linter in all components and pages
-- `test`: runs jest to test all components and pages
-- `test:watch`: runs jest in watch mode
-- `storybook`: runs storybook on `localhost:6006`
-- `build-storybook`: create the build version of storybook
+## 🚀 Como Iniciar o Projeto Localmente
 
-## Learn More
+Siga o passo a passo a seguir para rodar toda a infraestrutura local (Banco de Dados + Aplicação).
 
-To learn more about Next.js, take a look at the following resources:
+### Pré-requisitos
+*   **Node.js** (v18 ou superior recomendado)
+*   **Docker Desktop** (ativo e rodando na sua máquina)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+### Passo 1: Inicializar e Subir o Supabase Local (Docker)
 
-## Deploy on Vercel
+O banco de dados PostgreSQL e os serviços de Autenticação/Realtime rodam localmente via Docker através do Supabase CLI.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/import?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1.  Certifique-se de que o Docker Desktop está aberto.
+2.  No terminal do projeto, inicialize a infraestrutura do Supabase:
+    ```bash
+    npx supabase start
+    ```
+3.  Quando a inicialização terminar, o terminal exibirá as portas e chaves do seu projeto local. A URL do painel administrativo do Supabase (Studio) estará rodando em:
+    *   **Supabase Studio:** [http://127.0.0.1:54323](http://127.0.0.1:54323)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+---
+
+### Passo 2: Configurar o Realtime no Banco (SQL Editor)
+
+Para que o painel de administração atualize os dados em tempo real via WebSockets:
+
+1.  Abra o **Supabase Studio** local ([http://127.0.0.1:54323](http://127.0.0.1:54323)) no seu navegador.
+2.  Acesse a aba **SQL Editor** no menu lateral esquerdo.
+3.  Crie uma nova query, cole o código a seguir e clique em **Run**:
+    ```sql
+    -- Habilitar o envio de eventos Realtime para as tabelas do Crédito Fácil
+    alter publication supabase_realtime add table solicitacoes;
+    alter publication supabase_realtime add table transacoes_caixa;
+    ```
+
+---
+
+### Passo 3: Criar seu Usuário Administrador de Testes
+
+1.  No Supabase Studio local, acesse a aba **Authentication** (ícone de chave no menu lateral).
+2.  Clique em **Add User** ➔ **Create User**.
+3.  Insira um e-mail (ex: `admin@creditofacil.com`) e a senha que preferir.
+4.  **Importante:** Certifique-se de marcar a opção **"Auto-confirm user"** para ativar o login imediatamente sem confirmação de e-mail.
+5.  Clique em **Create User**.
+
+---
+
+### Passo 4: Rodar o Servidor de Desenvolvimento da Aplicação
+
+1.  Instale todas as dependências locais do projeto (caso não tenha feito):
+    ```bash
+    npm install
+    ```
+2.  Execute o servidor do Next.js:
+    ```bash
+    npm run dev
+    ```
+3.  Acesse a aplicação no navegador:
+    *   **Portal Público de Propostas:** [http://localhost:3000/solicitacao](http://localhost:3000/solicitacao)
+    *   **Painel Administrativo:** [http://localhost:3000/login](http://localhost:3000/login)
+
+---
+
+## 🛠️ Comandos Disponíveis
+
+No terminal da raiz do projeto, você pode executar:
+
+*   `npm run dev`: Inicia o servidor Next.js local em `localhost:3000`
+*   `npm run build`: Cria a versão de build otimizada para produção
+*   `npm run lint`: Executa a checagem estrita de regras sintáticas e ESLint
+*   `npx tsc --noEmit`: Roda a checagem rigorosa de conformidade de tipos TypeScript
+*   `npm test`: Roda os testes unitários via Jest
+*   `npx supabase stop`: Interrompe e desliga todos os contêineres Docker do Supabase

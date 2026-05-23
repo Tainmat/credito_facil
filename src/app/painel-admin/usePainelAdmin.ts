@@ -1,6 +1,35 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
+import { getSession, onAuthStateChange } from '../../api/accounts'
+import {
+  StatusSolicitacao,
+  Solicitacao,
+  DbSolicitacao
+} from '../../api/solicitacoes'
+import { DbTransacaoCaixa, TransacaoCaixa } from '../../api/transacoes'
+
+// Queries
+import { useBuscarSolicitacoesQuery } from '../../hooks/services/queries/useBuscarSolicitacoesQuery'
+import { useBuscarTransacoesQuery } from '../../hooks/services/queries/useBuscarTransacoesQuery'
+
+// Mutations
+import { useSignOutMutation } from '../../hooks/services/mutations/useSignOutMutation'
+import { useAdicionarTransacaoCaixaMutation } from '../../hooks/services/mutations/useAdicionarTransacaoCaixaMutation'
+import { useAtualizarSolicitacaoStatusMutation } from '../../hooks/services/mutations/useAtualizarSolicitacaoStatusMutation'
+import { useRegistrarPagamentoMutation } from '../../hooks/services/mutations/useRegistrarPagamentoMutation'
+import { useLimparPagamentoMutation } from '../../hooks/services/mutations/useLimparPagamentoMutation'
+import { useRemoverSolicitacaoMutation } from '../../hooks/services/mutations/useRemoverSolicitacaoMutation'
+
+// Re-exportação de tipos para manter retrocompatibilidade com componentes das páginas
+export type {
+  StatusSolicitacao,
+  Solicitacao,
+  DbSolicitacao,
+  DbTransacaoCaixa,
+  TransacaoCaixa
+}
 
 // ─── Constants ────────────────────────────────────────────
 export const AUTH_KEY = 'microcredito_admin_session'
@@ -12,77 +41,9 @@ export const TAXA_JUROS_ATRASO_DIA = 0.00033
 export const MS_POR_DIA = 24 * 60 * 60 * 1000
 
 // ─── Types ────────────────────────────────────────────────
-export type StatusSolicitacao =
-  | 'Pendente'
-  | 'Em Análise'
-  | 'Pix Feito'
-  | 'Golpe'
-
-export type Solicitacao = {
-  id: string
-  status?: string
-  criadaEm?: string
-  atualizadoEm?: string
-  solicitante?: {
-    nome?: string
-    cpf?: string
-    telefone?: string
-    valor?: string
-    pix?: string
-    dataPagamento?: string
-  }
-  contato?: {
-    nome?: string
-    cpf?: string
-    telefone?: string
-    relacionamento?: string
-  }
-  pagamento?: {
-    pago?: boolean
-    valorPago?: string
-    pagoEm?: string
-  }
-}
-
 export type Financeiro = {
   caixa?: string
   caixaSalvo?: boolean
-}
-
-export type TransacaoCaixa = {
-  id: string
-  tipo: 'aporte' | 'resgate'
-  valor: number
-  descricao: string
-  criadaEm: string
-}
-
-export interface DbSolicitacao {
-  id: string
-  status: string
-  created_at: string
-  updated_at: string
-  solicitante_nome: string | null
-  solicitante_cpf: string | null
-  solicitante_telefone: string | null
-  solicitante_valor: number | null
-  solicitante_pix: string | null
-  solicitante_data_pagamento: string | null
-  contato_nome: string | null
-  contato_cpf: string | null
-  contato_telefone: string | null
-  contato_relacionamento: string | null
-  pagamento_pago: boolean | null
-  pagamento_valor_pago: number | null
-  pagamento_pago_em: string | null
-}
-
-export interface DbTransacaoCaixa {
-  id: string
-  tipo: string
-  valor: number
-  descricao: string | null
-  created_at: string
 }
 
 export type ResumoJuros = {
@@ -350,36 +311,105 @@ export function mapearSolicitacao(db: DbSolicitacao): Solicitacao {
 // ─── Hook ─────────────────────────────────────────────────
 export function usePainelAdmin() {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [solicitacoes, setSolicitacoes] = useState<Solicitacao[]>([])
   const [busca, setBusca] = useState('')
   const [filtroStatus, setFiltroStatus] = useState('')
   const [inputCaixa, setInputCaixa] = useState('')
   const [caixaSalvo, setCaixaSalvo] = useState(false)
   const [modalAberta, setModalAberta] = useState<Solicitacao | null>(null)
-  const [transacoesCaixa, setTransacoesCaixa] = useState<TransacaoCaixa[]>([])
+
   const cardsMinimizadosRef = useRef(new Set<string>())
   const [, forceUpdate] = useState(0)
 
-  // Auth check & Load data
+  // Queries
+  const { data: solicitacoes = [], refetch: refetchSolicitacoes } =
+    useBuscarSolicitacoesQuery()
+  const { data: transacoesCaixa = [], refetch: refetchTransacoes } =
+    useBuscarTransacoesQuery()
+
+  // Mutations
+  const signOutMutation = useSignOutMutation()
+  const adicionarTransacaoMutation = useAdicionarTransacaoCaixaMutation()
+  const atualizarStatusMutation = useAtualizarSolicitacaoStatusMutation()
+  const registrarPagamentoMutation = useRegistrarPagamentoMutation()
+  const limparPagamentoMutation = useLimparPagamentoMutation()
+  const removerSolicitacaoMutation = useRemoverSolicitacaoMutation()
+
+  // Calculate current caixa balance from the transaction history
+  const totalAportes = transacoesCaixa
+    .filter((t: TransacaoCaixa) => t.tipo === 'aporte')
+    .reduce((acc: number, t: TransacaoCaixa) => acc + t.valor, 0)
+  const totalResgates = transacoesCaixa
+    .filter((t: TransacaoCaixa) => t.tipo === 'resgate')
+    .reduce((acc: number, t: TransacaoCaixa) => acc + t.valor, 0)
+  const saldoCaixa = totalAportes - totalResgates
+
+  // Sincroniza inputCaixa sempre que o saldo do banco mudar de forma reativa!
+  useEffect(() => {
+    setInputCaixa(formatarMoeda(saldoCaixa))
+    setCaixaSalvo(true)
+  }, [saldoCaixa])
+
+  // Escuta alterações no banco de dados em tempo real via Supabase Realtime
+  useEffect(() => {
+    if (!isAuthenticated) return
+
+    const channelSolicitacoes = supabase
+      .channel('solicitacoes-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'solicitacoes'
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['solicitacoes'] })
+        }
+      )
+      .subscribe()
+
+    const channelTransacoes = supabase
+      .channel('transacoes-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'transacoes_caixa'
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['transacoes'] })
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channelSolicitacoes)
+      supabase.removeChannel(channelTransacoes)
+    }
+  }, [isAuthenticated, queryClient])
+
+  // Auth check & Session tracking
   useEffect(() => {
     async function checkAuth() {
-      const {
-        data: { session }
-      } = await supabase.auth.getSession()
-      if (!session) {
+      try {
+        const session = await getSession()
+        if (!session) {
+          router.push('/login')
+          return
+        }
+        setIsAuthenticated(true)
+      } catch (err) {
+        console.error('Erro na checagem de auth:', err)
         router.push('/login')
-        return
       }
-      setIsAuthenticated(true)
-      recarregar()
     }
 
     checkAuth()
 
-    const {
-      data: { subscription }
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    const subscription = onAuthStateChange((session) => {
       if (!session) {
         setIsAuthenticated(false)
         router.push('/login')
@@ -391,7 +421,7 @@ export function usePainelAdmin() {
     return () => {
       subscription.unsubscribe()
     }
-  }, [router]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [router])
 
   // Close modal on Escape
   useEffect(() => {
@@ -415,54 +445,11 @@ export function usePainelAdmin() {
   }, [modalAberta])
 
   async function recarregar() {
-    const { data: dbSolicitacoes, error: sError } = await supabase
-      .from('solicitacoes')
-      .select('*')
-      .order('created_at', { ascending: false })
-
-    if (sError) {
-      console.error('Erro ao carregar solicitações do Supabase:', sError)
-      return
-    }
-
-    const { data: dbTransacoes, error: tError } = await supabase
-      .from('transacoes_caixa')
-      .select('*')
-      .order('created_at', { ascending: false })
-
-    if (tError) {
-      console.error('Erro ao carregar transações de caixa do Supabase:', tError)
-      return
-    }
-
-    const solicitacoesMapeadas = (dbSolicitacoes || []).map(mapearSolicitacao)
-    setSolicitacoes(solicitacoesMapeadas)
-
-    const txsMapeadas = (dbTransacoes || []).map((tx: DbTransacaoCaixa) => ({
-      id: tx.id,
-      tipo: tx.tipo as 'aporte' | 'resgate',
-      valor: Number(tx.valor),
-      descricao: tx.descricao || '',
-      criadaEm: tx.created_at
-    }))
-
-    setTransacoesCaixa(txsMapeadas)
-
-    // Calculate current caixa balance from the transaction history
-    const totalAportes = txsMapeadas
-      .filter((t) => t.tipo === 'aporte')
-      .reduce((acc, t) => acc + t.valor, 0)
-    const totalResgates = txsMapeadas
-      .filter((t) => t.tipo === 'resgate')
-      .reduce((acc, t) => acc + t.valor, 0)
-    const saldoCaixa = totalAportes - totalResgates
-
-    setInputCaixa(formatarMoeda(saldoCaixa))
-    setCaixaSalvo(true)
+    await Promise.all([refetchSolicitacoes(), refetchTransacoes()])
   }
 
   async function sair() {
-    await supabase.auth.signOut()
+    await signOutMutation.mutateAsync()
     router.push('/login')
   }
 
@@ -481,75 +468,43 @@ export function usePainelAdmin() {
   ): Promise<boolean> {
     if (valor <= 0) return false
 
-    // Fetch transactions to verify balance for withdrawals
-    const { data: txs, error: fetchError } = await supabase
-      .from('transacoes_caixa')
-      .select('tipo, valor')
-
-    if (fetchError) {
-      console.error('Erro ao carregar transações para validação:', fetchError)
-      return false
-    }
-
-    const totalAportes = (txs || [])
-      .filter((t) => t.tipo === 'aporte')
-      .reduce((acc, t) => acc + Number(t.valor), 0)
-    const totalResgates = (txs || [])
-      .filter((t) => t.tipo === 'resgate')
-      .reduce((acc, t) => acc + Number(t.valor), 0)
-    const caixaAtual = totalAportes - totalResgates
-
-    if (tipo === 'resgate' && caixaAtual < valor) {
+    if (tipo === 'resgate' && saldoCaixa < valor) {
       alert('Saldo de caixa insuficiente para realizar o resgate!')
       return false
     }
 
-    const { error: insertError } = await supabase
-      .from('transacoes_caixa')
-      .insert({
+    try {
+      await adicionarTransacaoMutation.mutateAsync({
         id: `TX-${Date.now()}`,
         tipo,
         valor,
         descricao:
           descricao.trim() ||
-          (tipo === 'aporte' ? 'Aporte de Capital' : 'Resgate de Capital'),
-        created_at: new Date().toISOString()
+          (tipo === 'aporte' ? 'Aporte de Capital' : 'Resgate de Capital')
       })
-
-    if (insertError) {
-      console.error('Erro ao registrar transação no Supabase:', insertError)
+      return true
+    } catch (err) {
+      console.error('Erro ao registrar transação:', err)
       return false
     }
-
-    await recarregar()
-    return true
   }
 
   async function atualizarStatus(id: string, status: StatusSolicitacao) {
-    const { error } = await supabase
-      .from('solicitacoes')
-      .update({
-        status,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
+    try {
+      await atualizarStatusMutation.mutateAsync({ id, status })
 
-    if (error) {
-      console.error('Erro ao atualizar status no Supabase:', error)
-      return
-    }
-
-    await recarregar()
-
-    if (modalAberta?.id === id) {
-      setModalAberta((m) => {
-        if (!m) return null
-        return {
-          ...m,
-          status,
-          atualizadoEm: new Date().toISOString()
-        }
-      })
+      if (modalAberta?.id === id) {
+        setModalAberta((m) => {
+          if (!m) return null
+          return {
+            ...m,
+            status,
+            atualizadoEm: new Date().toISOString()
+          }
+        })
+      }
+    } catch (err) {
+      console.error('Erro ao atualizar status:', err)
     }
   }
 
@@ -558,66 +513,49 @@ export function usePainelAdmin() {
     valorPago: string,
     dataPagamento: Date
   ) {
-    const { error } = await supabase
-      .from('solicitacoes')
-      .update({
-        pagamento_pago: true,
-        pagamento_valor_pago: numeroMoeda(valorPago),
-        pagamento_pago_em: dataPagamento.toISOString(),
-        updated_at: new Date().toISOString()
+    try {
+      await registrarPagamentoMutation.mutateAsync({
+        id,
+        pago: true,
+        valorPago: numeroMoeda(valorPago),
+        pagoEm: dataPagamento.toISOString()
       })
-      .eq('id', id)
 
-    if (error) {
-      console.error('Erro ao registrar pagamento no Supabase:', error)
-      return
-    }
-
-    await recarregar()
-
-    if (modalAberta?.id === id) {
-      setModalAberta((m) => {
-        if (!m) return null
-        return {
-          ...m,
-          pagamento: {
-            pago: true,
-            valorPago,
-            pagoEm: dataPagamento.toISOString()
-          },
-          atualizadoEm: new Date().toISOString()
-        }
-      })
+      if (modalAberta?.id === id) {
+        setModalAberta((m) => {
+          if (!m) return null
+          return {
+            ...m,
+            pagamento: {
+              pago: true,
+              valorPago,
+              pagoEm: dataPagamento.toISOString()
+            },
+            atualizadoEm: new Date().toISOString()
+          }
+        })
+      }
+    } catch (err) {
+      console.error('Erro ao registrar pagamento:', err)
     }
   }
 
   async function limparPagamento(id: string) {
-    const { error } = await supabase
-      .from('solicitacoes')
-      .update({
-        pagamento_pago: false,
-        pagamento_valor_pago: null,
-        pagamento_pago_em: null,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
+    try {
+      await limparPagamentoMutation.mutateAsync(id)
 
-    if (error) {
-      console.error('Erro ao limpar pagamento no Supabase:', error)
-      return
-    }
-
-    await recarregar()
-
-    if (modalAberta?.id === id) {
-      setModalAberta((m) => {
-        if (!m) return null
-        return {
-          ...m,
-          pagamento: { pago: false, valorPago: '', pagoEm: '' },
-          atualizadoEm: new Date().toISOString()
-        }
-      })
+      if (modalAberta?.id === id) {
+        setModalAberta((m) => {
+          if (!m) return null
+          return {
+            ...m,
+            pagamento: { pago: false, valorPago: '', pagoEm: '' },
+            atualizadoEm: new Date().toISOString()
+          }
+        })
+      }
+    } catch (err) {
+      console.error('Erro ao limpar pagamento:', err)
     }
   }
 
@@ -638,15 +576,12 @@ export function usePainelAdmin() {
 
   async function removerSolicitacao(id: string) {
     if (!window.confirm('Remover esta solicitacao do painel?')) return
-    const { error } = await supabase.from('solicitacoes').delete().eq('id', id)
-
-    if (error) {
-      console.error('Erro ao remover solicitação no Supabase:', error)
-      return
+    try {
+      await removerSolicitacaoMutation.mutateAsync(id)
+      if (modalAberta?.id === id) setModalAberta(null)
+    } catch (err) {
+      console.error('Erro ao remover solicitação:', err)
     }
-
-    await recarregar()
-    if (modalAberta?.id === id) setModalAberta(null)
   }
 
   function alternarCard(id: string) {
@@ -674,13 +609,15 @@ export function usePainelAdmin() {
     }
 
     const mesmos = solicitacoes.filter(
-      (s) => chaveHistoricoSolicitante(s) === chave
+      (s: Solicitacao) => chaveHistoricoSolicitante(s) === chave
     )
-    const anteriores = mesmos.filter((s) => s.id !== item.id)
-    const pagos = anteriores.filter((s) => s.pagamento?.pago)
+    const anteriores = mesmos.filter((s: Solicitacao) => s.id !== item.id)
+    const pagos = anteriores.filter((s: Solicitacao) => s.pagamento?.pago)
     const pagosCorretamente = pagos.filter(pagamentoFoiCorreto).length
     const pagosComAtraso = pagos.length - pagosCorretamente
-    const emAberto = anteriores.filter((s) => !s.pagamento?.pago).length
+    const emAberto = anteriores.filter(
+      (s: Solicitacao) => !s.pagamento?.pago
+    ).length
 
     let avaliacao = 'Novo cliente'
     let classeAvaliacao = 'text-zinc-400'
@@ -709,7 +646,7 @@ export function usePainelAdmin() {
   }
 
   // Computed
-  const solicitacoesFiltradas = solicitacoes.filter((s) => {
+  const solicitacoesFiltradas = solicitacoes.filter((s: Solicitacao) => {
     const status = normalizarStatus(s.status)
     if (filtroStatus && status !== filtroStatus) return false
     if (busca.trim()) {
@@ -731,28 +668,34 @@ export function usePainelAdmin() {
 
   const indicadores = {
     pendente: solicitacoes.filter(
-      (s) => normalizarStatus(s.status) === 'Pendente'
+      (s: Solicitacao) => normalizarStatus(s.status) === 'Pendente'
     ).length,
     analise: solicitacoes.filter(
-      (s) => normalizarStatus(s.status) === 'Em Análise'
+      (s: Solicitacao) => normalizarStatus(s.status) === 'Em Análise'
     ).length,
-    pix: solicitacoes.filter((s) => normalizarStatus(s.status) === 'Pix Feito')
-      .length,
-    golpe: solicitacoes.filter((s) => normalizarStatus(s.status) === 'Golpe')
-      .length,
+    pix: solicitacoes.filter(
+      (s: Solicitacao) => normalizarStatus(s.status) === 'Pix Feito'
+    ).length,
+    golpe: solicitacoes.filter(
+      (s: Solicitacao) => normalizarStatus(s.status) === 'Golpe'
+    ).length,
     total: solicitacoes.length
   }
 
   const caixaValor = numeroMoeda(inputCaixa)
   const totalDisponibilizado = solicitacoes
-    .filter((s) => normalizarStatus(s.status) === 'Pix Feito')
-    .reduce((acc, s) => acc + numeroMoeda(s.solicitante?.valor), 0)
+    .filter((s: Solicitacao) => normalizarStatus(s.status) === 'Pix Feito')
+    .reduce(
+      (acc: number, s: Solicitacao) => acc + numeroMoeda(s.solicitante?.valor),
+      0
+    )
 
   const totalGanho = solicitacoes
     .filter(
-      (s) => normalizarStatus(s.status) === 'Pix Feito' && s.pagamento?.pago
+      (s: Solicitacao) =>
+        normalizarStatus(s.status) === 'Pix Feito' && s.pagamento?.pago
     )
-    .reduce((acc, s) => {
+    .reduce((acc: number, s: Solicitacao) => {
       const resumo = calcularValorAtualizado(s)
       const pago = numeroMoeda(s.pagamento?.valorPago)
       return acc + (pago - resumo.valorEmprestado)

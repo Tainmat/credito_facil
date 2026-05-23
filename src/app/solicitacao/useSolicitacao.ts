@@ -8,7 +8,7 @@ import {
   Zap
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { supabase } from '../../lib/supabase'
+import { useCriarSolicitacaoMutation } from '../../hooks/services/mutations/useCriarSolicitacaoMutation'
 
 function numeroMoeda(v: string): number {
   if (!v) return 0
@@ -116,6 +116,7 @@ export const flowSteps: FlowStep[] = [
 // ─── Hook ──────────────────────────────────────────────────
 export function useSolicitacao() {
   const [step, setStep] = useState<Step>('solicitante')
+  const criarSolicitacao = useCriarSolicitacaoMutation()
 
   // Solicitante
   const [nome, setNome] = useState('')
@@ -169,32 +170,27 @@ export function useSolicitacao() {
   }, [])
 
   async function handleFinalizarSolicitacao() {
-    const { error } = await supabase.from('solicitacoes').insert({
-      id: `SOL-${Date.now()}`,
-      status: 'Pendente',
-      solicitante_nome: nome,
-      solicitante_cpf: cpf,
-      solicitante_telefone: telefone,
-      solicitante_valor: numeroMoeda(valor),
-      solicitante_pix: pix,
-      solicitante_data_pagamento: dataPagamento
-        ? formatISO(dataPagamento)
-        : null,
-      contato_nome: contatoNome,
-      contato_cpf: contatoCpf,
-      contato_telefone: contatoTelefone,
-      contato_relacionamento: contatoRelacionamento
-    })
-
-    if (error) {
-      console.error('Erro ao salvar solicitação no Supabase:', error)
+    try {
+      await criarSolicitacao.mutateAsync({
+        id: `SOL-${Date.now()}`,
+        nome,
+        cpf,
+        telefone,
+        valor: numeroMoeda(valor),
+        pix,
+        dataPagamento: dataPagamento ? formatISO(dataPagamento) : null,
+        contatoNome,
+        contatoCpf,
+        contatoTelefone,
+        contatoRelacionamento
+      })
+      setStep('agradecimento')
+    } catch (error) {
+      console.error('Erro ao salvar solicitação:', error)
       alert(
         'Ocorreu um erro ao enviar sua solicitação. Por favor, tente novamente.'
       )
-      return
     }
-
-    setStep('agradecimento')
   }
 
   function handleReset() {

@@ -13,7 +13,8 @@ import {
   ArrowRight,
   ArrowLeft
 } from 'lucide-react'
-import { supabase } from '../../lib/supabase'
+import { getSession } from '../../api/accounts'
+import { useSignInMutation } from '../../hooks/services/mutations/useSignInMutation'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -21,14 +22,17 @@ export default function LoginPage() {
   const [senha, setSenha] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [erro, setErro] = useState('')
+  const signInMutation = useSignInMutation()
 
   useEffect(() => {
     async function checkSession() {
-      const {
-        data: { session }
-      } = await supabase.auth.getSession()
-      if (session) {
-        router.replace('/painel-admin')
+      try {
+        const session = await getSession()
+        if (session) {
+          router.replace('/painel-admin')
+        }
+      } catch (err) {
+        console.error('Erro ao verificar sessão:', err)
       }
     }
     checkSession()
@@ -42,21 +46,17 @@ export default function LoginPage() {
     }
     setErro('')
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password: senha
-    })
-
-    if (error) {
+    try {
+      await signInMutation.mutateAsync({ email, senha })
+      router.replace('/painel-admin')
+    } catch (error) {
+      const err = error as Error
       setErro(
-        error.message === 'Invalid login credentials'
+        err.message === 'Invalid login credentials'
           ? 'E-mail ou senha incorretos.'
-          : error.message
+          : err.message
       )
-      return
     }
-
-    router.replace('/painel-admin')
   }
 
   return (

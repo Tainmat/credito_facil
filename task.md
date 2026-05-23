@@ -1,0 +1,25 @@
+# Checklist de Refatoração Arquitetural (Camada de API + TanStack Query)
+
+- [x] Instalar o TanStack Query no projeto (`npm install @tanstack/react-query`)
+- [x] Configurar o `QueryClientProvider` em `src/app/providers.tsx`
+- [x] Criar a camada de API (`src/api`)
+  - [x] `src/api/accounts/index.ts`
+  - [x] `src/api/solicitacoes/index.ts`
+  - [x] `src/api/transacoes/index.ts`
+- [x] Criar Custom Hooks de Queries (`src/hooks/services/queries`)
+  - [x] `useBuscarSolicitacoesQuery.ts`
+  - [x] `useBuscarTransacoesQuery.ts`
+- [x] Criar Custom Hooks de Mutations (`src/hooks/services/mutations`)
+  - [x] `useSignInMutation.ts`
+  - [x] `useSignOutMutation.ts`
+  - [x] `useCriarSolicitacaoMutation.ts`
+  - [x] `useAtualizarSolicitacaoStatusMutation.ts`
+  - [x] `useRegistrarPagamentoMutation.ts`
+  - [x] `useLimparPagamentoMutation.ts`
+  - [x] `useRemoverSolicitacaoMutation.ts`
+  - [x] `useAdicionarTransacaoCaixaMutation.ts`
+- [x] Refatorar hooks e páginas existentes
+  - [x] `src/app/solicitacao/useSolicitacao.ts`
+  - [x] `src/app/painel-admin/usePainelAdmin.ts`
+  - [x] `src/app/login/page.tsx`
+- [x] Validar compilação e qualidade de código

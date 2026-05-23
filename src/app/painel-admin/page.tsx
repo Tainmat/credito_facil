@@ -18,7 +18,7 @@ import {
   Minus,
   History
 } from 'lucide-react'
-import { usePainelAdmin, formatarMoeda } from './usePainelAdmin'
+import { usePainelAdmin, formatarMoeda, Solicitacao } from './usePainelAdmin'
 import { SolicitacaoCard } from './components/SolicitacaoCard'
 import { StatCard } from './components/StatCard'
 import { DetailModal } from './components/DetailModal'
@@ -238,7 +238,7 @@ export default function PainelAdminPage() {
         {/* Grid */}
         {solicitacoesFiltradas.length > 0 ? (
           <div className="solicitacoes-grid">
-            {solicitacoesFiltradas.map((item) => (
+            {solicitacoesFiltradas.map((item: Solicitacao) => (
               <SolicitacaoCard
                 key={item.id}
                 item={item}
