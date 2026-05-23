@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Microcrédito Inteligente</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        
+        /* Ocultar scrollbar nos selects se necessário */
+        select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+
+        .flow-step {
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 350ms ease, transform 350ms ease;
+        }
+
+        .flow-step.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            align-items: center;
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 0.75rem;
+            color: #d4d4d8;
+            display: flex;
+            font-size: 0.875rem;
+            font-weight: 600;
+            justify-content: center;
+            transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, transform 180ms ease;
+        }
+
+        .calendar-day:hover:not(:disabled) {
+            background: rgba(16, 185, 129, 0.1);
+            border-color: rgba(16, 185, 129, 0.35);
+            color: #ffffff;
+            transform: translateY(-1px);
+        }
+
+        .calendar-day:focus-visible,
+        .calendar-nav-button:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.45);
+        }
+
+        .calendar-day.is-muted {
+            color: #52525b;
+        }
+
+        .calendar-day.is-today {
+            border-color: rgba(16, 185, 129, 0.45);
+            color: #6ee7b7;
+        }
+
+        .calendar-day.is-selected {
+            background: #10b981;
+            border-color: #10b981;
+            color: #ffffff;
+            box-shadow: 0 10px 22px rgba(16, 185, 129, 0.22);
+        }
+
+        .calendar-day:disabled {
+            color: #3f3f46;
+            cursor: not-allowed;
+            opacity: 0.45;
+        }
+
+        .calendar-nav-button {
+            align-items: center;
+            background: #0a0a0a;
+            border: 1px solid rgba(63, 63, 70, 0.8);
+            border-radius: 0.75rem;
+            color: #d4d4d8;
+            display: inline-flex;
+            height: 2.5rem;
+            justify-content: center;
+            transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+            width: 2.5rem;
+        }
+
+        .calendar-nav-button:hover:not(:disabled) {
+            background: rgba(16, 185, 129, 0.1);
+            border-color: rgba(16, 185, 129, 0.4);
+            color: #ffffff;
+        }
+
+        .calendar-nav-button:disabled {
+            color: #3f3f46;
+            cursor: not-allowed;
+            opacity: 0.55;
+        }
+
+        .calendar-modal {
+            align-items: center;
+            background: rgba(0, 0, 0, 0.68);
+            backdrop-filter: blur(10px);
+            display: none;
+            inset: 0;
+            justify-content: center;
+            padding: 1rem;
+            position: fixed;
+            z-index: 50;
+        }
+
+        .calendar-modal.is-open {
+            display: flex;
+        }
+
+        .calendar-panel {
+            background:
+                radial-gradient(circle at top, rgba(16, 185, 129, 0.1), transparent 42%),
+                #0a0a0a;
+            border: 1px solid rgba(63, 63, 70, 0.8);
+            border-radius: 1.5rem;
+            box-shadow: 0 28px 70px rgba(0, 0, 0, 0.55);
+            opacity: 0;
+            padding: 1rem;
+            transform: translateY(8px) scale(0.98);
+            transition: opacity 180ms ease, transform 180ms ease;
+            width: min(100%, 24rem);
+        }
+
+        .calendar-modal.is-open .calendar-panel {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
+        body.calendar-modal-open {
+            overflow: hidden;
+        }
+
+        @media (max-width: 420px) {
+            .calendar-panel {
+                border-radius: 1.25rem;
+                padding: 0.875rem;
+            }
+
+            .calendar-day {
+                border-radius: 0.625rem;
+                font-size: 0.8125rem;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-[#0a0a0a] text-zinc-100 p-4 md:p-8 selection:bg-emerald-500/30">
+
+    <div class="fixed top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-emerald-500/5 blur-[120px] rounded-full pointer-events-none z-0"></div>
+
+    <div class="max-w-6xl mx-auto relative z-10 pt-4">
+        
+        <div class="mb-12">
+            <h1 class="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight text-white">
+                Microcrédito <span class="text-emerald-400">Inteligente</span>
+            </h1>
+            <p class="text-zinc-400 max-w-2xl text-lg leading-relaxed">
+                Plataforma focada em microcrédito com validação social, score interno e liberação via PIX. Desenhada para confiança e velocidade.
+            </p>
+        </div>
+
+        <div class="grid lg:grid-cols-2 gap-12">
+            
+            <div class="bg-[#121212] rounded-3xl p-8 border border-zinc-800/60 shadow-2xl relative overflow-hidden group min-h-[550px]">
+                
+                <div id="step-solicitante" class="transition-opacity duration-300 opacity-100">
+                    <h2 class="text-xl font-bold mb-6 flex items-center gap-3">
+                        <i data-lucide="credit-card" class="text-emerald-400 w-6 h-6"></i>
+                        Solicitação de Crédito
+                    </h2>
+
+                    <div class="space-y-4">
+                        <div class="relative">
+                            <i data-lucide="user" class="absolute left-4 top-4 text-zinc-500 w-5 h-5"></i>
+                            <input type="text" id="input-nome" placeholder="Nome completo" class="req-step-1 w-full pl-12 pr-4 py-3.5 rounded-xl bg-[#0a0a0a] border border-zinc-800/80 text-zinc-200 placeholder-zinc-600 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all outline-none">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="relative">
+                                <i data-lucide="file-text" class="absolute left-4 top-4 text-zinc-500 w-5 h-5"></i>
+                                <input type="text" id="input-cpf" placeholder="CPF" maxlength="14" class="req-step-1 mask-cpf w-full pl-12 pr-4 py-3.5 rounded-xl bg-[#0a0a0a] border border-zinc-800/80 text-zinc-200 placeholder-zinc-600 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all outline-none">
+                            </div>
+                            <div class="relative">
+                                <i data-lucide="smartphone" class="absolute left-4 top-4 text-zinc-500 w-5 h-5"></i>
+                                <input type="text" id="input-telefone" placeholder="Telefone" maxlength="15" class="req-step-1 mask-phone w-full pl-12 pr-4 py-3.5 rounded-xl bg-[#0a0a0a] border border-zinc-800/80 text-zinc-200 placeholder-zinc-600 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all outline-none">
+                            </div>
+                        </div>
+
+                        <div class="relative">
+                            <i data-lucide="dollar-sign" class="absolute left-4 top-4 text-zinc-500 w-5 h-5"></i>
+                            <input type="text" id="input-valor" placeholder="Valor desejado (R$ 200 - R$ 500)" class="req-step-1 w-full pl-12 pr-4 py-3.5 rounded-xl bg-[#0a0a0a] border border-zinc-800/80 text-zinc-200 placeholder-zinc-600 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all outline-none">
+                        </div>
+
+                        <div class="relative">
+                            <i data-lucide="zap" class="absolute left-4 top-4 text-zinc-500 w-5 h-5"></i>
+                            <input type="text" id="input-pix" placeholder="Chave PIX" class="req-step-1 w-full pl-12 pr-4 py-3.5 rounded-xl bg-[#0a0a0a] border border-zinc-800/80 text-zinc-200 placeholder-zinc-600 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all outline-none">
+                        </div>
+
+                        <div>
+                            <label for="btn-data-pagamento" class="block text-xs font-medium text-zinc-500 mb-2 ml-1">
+                                Data de pagamento (prazo máximo de 28 dias)
+                            </label>
+                            <div id="calendario-pagamento" class="relative">
+                                <input type="hidden" id="input-data-pagamento" class="req-step-1">
+                                <button type="button" id="btn-data-pagamento" aria-expanded="false" aria-controls="calendario-dropdown" class="w-full pl-12 pr-12 py-3.5 rounded-xl bg-[#0a0a0a] border border-zinc-800/80 text-left text-zinc-200 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all outline-none cursor-pointer relative">
+                                    <i data-lucide="calendar-days" class="absolute left-4 top-4 text-zinc-500 w-5 h-5 pointer-events-none"></i>
+                                    <span id="texto-data-pagamento" class="block truncate text-zinc-600">Escolha uma data</span>
+                                    <i data-lucide="chevron-down" class="absolute right-4 top-4 text-zinc-500 w-5 h-5 pointer-events-none"></i>
+                                </button>
+
+                                <div id="calendario-dropdown" class="calendar-modal" role="dialog" aria-modal="true" aria-labelledby="calendario-titulo">
+                                    <div class="calendar-panel">
+                                        <div class="mb-4 flex items-start justify-between gap-3">
+                                            <div>
+                                                <p id="calendario-titulo" class="text-lg font-bold text-white">Data de pagamento</p>
+                                                <p class="text-sm text-zinc-500">Prazo máximo de 28 dias</p>
+                                            </div>
+                                            <button type="button" id="calendario-fechar" class="calendar-nav-button" aria-label="Fechar calendário">
+                                                <i data-lucide="x" class="w-4 h-4"></i>
+                                            </button>
+                                        </div>
+
+                                        <div class="flex items-center justify-between gap-3">
+                                            <button type="button" id="calendario-prev" class="calendar-nav-button" aria-label="Mês anterior">
+                                                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                                            </button>
+                                            <div class="min-w-0 text-center">
+                                                <p id="calendario-mes" class="truncate text-sm font-bold text-white"></p>
+                                                <p class="text-xs text-zinc-500">Selecione o vencimento</p>
+                                            </div>
+                                            <button type="button" id="calendario-next" class="calendar-nav-button" aria-label="Próximo mês">
+                                                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                                            </button>
+                                        </div>
+
+                                        <div class="mt-4 grid grid-cols-7 gap-1 text-center text-[11px] font-bold uppercase text-zinc-500">
+                                            <span>Dom</span>
+                                            <span>Seg</span>
+                                            <span>Ter</span>
+                                            <span>Qua</span>
+                                            <span>Qui</span>
+                                            <span>Sex</span>
+                                            <span>Sáb</span>
+                                        </div>
+
+                                        <div id="calendario-dias" class="mt-2 grid grid-cols-7 gap-1"></div>
+
+                                        <div class="mt-4 flex items-center justify-between border-t border-zinc-800 pt-4">
+                                            <button type="button" id="calendario-hoje" class="text-sm font-semibold text-emerald-300 hover:text-emerald-200 transition-colors">Hoje</button>
+                                            <button type="button" id="calendario-limpar" class="text-sm font-semibold text-zinc-500 hover:text-zinc-200 transition-colors">Limpar</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="button" id="btn-avancar" disabled onclick="avancarParaFiador()" class="w-full bg-[#10B981] text-white font-semibold py-3.5 rounded-xl transition-all duration-300 mt-2 flex items-center justify-center gap-2 opacity-50 cursor-not-allowed">
+                            Avançar <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="step-fiador" class="hidden transition-opacity duration-300 opacity-0 absolute top-8 left-8 right-8">
+                    
+                    <button onclick="voltarParaSolicitante()" class="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors mb-4 text-sm">
+                        <i data-lucide="arrow-left" class="w-4 h-4"></i> Voltar
+                    </button>
+
+                    <h2 class="text-xl font-bold mb-6 flex items-center gap-3">
+                        <i data-lucide="users" class="text-emerald-400 w-6 h-6"></i>
+                        Dados do Contato de Confiança
+                    </h2>
+
+                    <p class="text-zinc-400 text-sm mb-6">
+                        Para validar seu crédito, informe os dados de uma pessoa de confiança que servirá como sua referência social.
+                    </p>
+
+                    <div class="space-y-4">
+                        <div class="relative">
+                            <i data-lucide="user" class="absolute left-4 top-4 text-zinc-500 w-5 h-5"></i>
+                            <input type="text" id="contato-nome" placeholder="Nome completo" class="w-full pl-12 pr-4 py-3.5 rounded-xl bg-[#0a0a0a] border border-zinc-800/80 text-zinc-200 placeholder-zinc-600 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all outline-none">
+                        </div>
+
+                        <div class="relative">
+                            <i data-lucide="file-text" class="absolute left-4 top-4 text-zinc-500 w-5 h-5"></i>
+                            <input type="text" id="contato-cpf" placeholder="CPF" maxlength="14" class="mask-cpf w-full pl-12 pr-4 py-3.5 rounded-xl bg-[#0a0a0a] border border-zinc-800/80 text-zinc-200 placeholder-zinc-600 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all outline-none">
+                        </div>
+
+                        <div class="relative">
+                            <i data-lucide="smartphone" class="absolute left-4 top-4 text-zinc-500 w-5 h-5"></i>
+                            <input type="text" id="contato-telefone" placeholder="Telefone" maxlength="15" class="mask-phone w-full pl-12 pr-4 py-3.5 rounded-xl bg-[#0a0a0a] border border-zinc-800/80 text-zinc-200 placeholder-zinc-600 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all outline-none">
+                        </div>
+
+                        <div class="relative">
+                            <i data-lucide="link" class="absolute left-4 top-4 text-zinc-500 w-5 h-5"></i>
+                            <select id="contato-relacionamento" class="w-full pl-12 pr-4 py-3.5 rounded-xl bg-[#0a0a0a] border border-zinc-800/80 text-zinc-200 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all outline-none cursor-pointer">
+                                <option value="" disabled selected class="text-zinc-600">Qual o grau de relacionamento?</option>
+                                <option value="parente">Parente (Pai/Mãe/Irmão/Filho)</option>
+                                <option value="conjuge">Cônjuge</option>
+                                <option value="amigo">Amigo Próximo</option>
+                                <option value="colega">Colega de Trabalho</option>
+                            </select>
+                            <i data-lucide="chevron-down" class="absolute right-4 top-4 text-zinc-500 w-5 h-5 pointer-events-none"></i>
+                        </div>
+
+                        <button type="button" onclick="finalizarSolicitacao()" class="w-full bg-[#10B981] hover:bg-[#059669] text-white font-semibold py-3.5 rounded-xl transition-all duration-300 mt-4 flex items-center justify-center gap-2">
+                            Finalizar Solicitação <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+
+                    <p class="mt-4 text-xs leading-relaxed text-zinc-500">
+                        Essa pessoa é um apoio para seu dinheiro, caso haja inadimplência, o seu contato não conseguirá um possível empréstimo com nosso time.
+                    </p>
+                </div>
+
+                <div id="step-agradecimento" class="hidden transition-opacity duration-300 opacity-0 absolute top-8 left-8 right-8 bottom-8">
+                    <div class="h-full flex flex-col items-center justify-center text-center">
+                        <div class="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mb-6">
+                            <i data-lucide="check-circle-2" class="text-emerald-400 w-9 h-9"></i>
+                        </div>
+
+                        <h2 class="text-2xl font-bold text-white mb-4">
+                            Obrigado pela solicitação
+                        </h2>
+
+                        <p class="text-zinc-400 leading-relaxed max-w-md mb-8">
+                            Nossa equipe já recebeu sua solicitação e irá analisar as informações. Dentro de 30 minutos vamos dar um retorno.
+                        </p>
+
+                        <button type="button" onclick="voltarParaInicio()" class="w-full max-w-xs bg-[#10B981] hover:bg-[#059669] text-white font-semibold py-3.5 rounded-xl transition-all duration-300 flex items-center justify-center gap-2">
+                            OK <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="flex flex-col justify-center py-4">
+                <h2 class="text-xl font-bold mb-8 flex items-center gap-3 px-2">
+                    <i data-lucide="trending-up" class="text-emerald-400 w-6 h-6"></i>
+                    Fluxo da Operação
+                </h2>
+                
+                <div class="relative border-l border-zinc-800/80 ml-5 space-y-8 pb-4">
+                    <div class="relative pl-8 group flow-step">
+                        <div class="absolute -left-[18px] top-0 w-9 h-9 rounded-full bg-[#121212] border border-zinc-700 flex items-center justify-center group-hover:border-emerald-500/50 transition-all duration-300">
+                            <i data-lucide="dollar-sign" class="w-4 h-4 text-emerald-400"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-semibold text-zinc-100 group-hover:text-emerald-400 transition-colors">1. Solicitação</h3>
+                            <p class="text-zinc-500 mt-1 text-sm leading-relaxed">Você solicita seu crédito.</p>
+                        </div>
+                    </div>
+
+                    <div class="relative pl-8 group flow-step">
+                        <div class="absolute -left-[18px] top-0 w-9 h-9 rounded-full bg-[#121212] border border-zinc-700 flex items-center justify-center group-hover:border-emerald-500/50 transition-all duration-300">
+                            <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-semibold text-zinc-100 group-hover:text-emerald-400 transition-colors">2. Validação</h3>
+                            <p class="text-zinc-500 mt-1 text-sm leading-relaxed">Nós avaliamos seus dados e chave PIX.</p>
+                        </div>
+                    </div>
+
+                    <div class="relative pl-8 group flow-step">
+                        <div class="absolute -left-[18px] top-0 w-9 h-9 rounded-full bg-[#121212] border border-zinc-700 flex items-center justify-center group-hover:border-emerald-500/50 transition-all duration-300">
+                            <i data-lucide="user" class="w-4 h-4 text-emerald-400"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-semibold text-zinc-100 group-hover:text-emerald-400 transition-colors">3. Referência Social</h3>
+                            <p class="text-zinc-500 mt-1 text-sm leading-relaxed">Você nos informa uma referência de segurança.</p>
+                        </div>
+                    </div>
+
+                    <div class="relative pl-8 group flow-step">
+                        <div class="absolute -left-[18px] top-0 w-9 h-9 rounded-full bg-[#121212] border border-zinc-700 flex items-center justify-center group-hover:border-emerald-500/50 transition-all duration-300">
+                            <i data-lucide="target" class="w-4 h-4 text-emerald-400"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-semibold text-zinc-100 group-hover:text-emerald-400 transition-colors">4. Análise</h3>
+                            <p class="text-zinc-500 mt-1 text-sm leading-relaxed">Realizamos toda a análise das informações.</p>
+                        </div>
+                    </div>
+
+                    <div class="relative pl-8 group flow-step">
+                        <div class="absolute -left-[18px] top-0 w-9 h-9 rounded-full bg-[#121212] border border-zinc-700 flex items-center justify-center group-hover:border-emerald-500/50 transition-all duration-300">
+                            <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-semibold text-zinc-100 group-hover:text-emerald-400 transition-colors">5. Aprovação</h3>
+                            <p class="text-zinc-500 mt-1 text-sm leading-relaxed">Definimos o limite.</p>
+                        </div>
+                    </div>
+
+                    <div class="relative pl-8 group flow-step">
+                        <div class="absolute -left-[18px] top-0 w-9 h-9 rounded-full bg-[#121212] border border-zinc-700 flex items-center justify-center group-hover:border-emerald-500/50 transition-all duration-300">
+                            <i data-lucide="zap" class="w-4 h-4 text-emerald-400"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-semibold text-zinc-100 group-hover:text-emerald-400 transition-colors">6. Transferência PIX</h3>
+                            <p class="text-zinc-500 mt-1 text-sm leading-relaxed">PIX enviado instantaneamente.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Iniciar Ícones
+        lucide.createIcons();
+
+        // Aplicar Máscaras nos Inputs
+        document.addEventListener('input', function (e) {
+            
+            // Máscara de CPF: 000.000.000-00
+            if (e.target.classList.contains('mask-cpf')) {
+                let v = e.target.value.replace(/\D/g, ""); // Remove tudo o que não é dígito
+                v = v.replace(/(\d{3})(\d)/, "$1.$2");    
+                v = v.replace(/(\d{3})(\d)/, "$1.$2");    
+                v = v.replace(/(\d{3})(\d{1,2})$/, "$1-$2"); 
+                e.target.value = v;
+            }
+
+            // Máscara de Telefone: (00) 00000-0000
+            if (e.target.classList.contains('mask-phone')) {
+                let v = e.target.value.replace(/\D/g, ""); 
+                v = v.replace(/^(\d{2})(\d)/g, "($1) $2"); 
+                v = v.replace(/(\d)(\d{4})$/, "$1-$2");    
+                e.target.value = v;
+            }
+        });
+
+        // ----------------------------------------------------------------
+        // Lógica de Validação do Formulário (Habilitar botão Avançar)
+        // ----------------------------------------------------------------
+        const inputsTexts = document.querySelectorAll('.req-step-1');
+        const btnAvancar = document.getElementById('btn-avancar');
+        const flowSteps = document.querySelectorAll('.flow-step');
+        const inputDataPagamento = document.getElementById('input-data-pagamento');
+        const calendarioPagamento = document.getElementById('calendario-pagamento');
+        const btnDataPagamento = document.getElementById('btn-data-pagamento');
+        const textoDataPagamento = document.getElementById('texto-data-pagamento');
+        const calendarioDropdown = document.getElementById('calendario-dropdown');
+        const calendarioMes = document.getElementById('calendario-mes');
+        const calendarioDias = document.getElementById('calendario-dias');
+        const calendarioPrev = document.getElementById('calendario-prev');
+        const calendarioNext = document.getElementById('calendario-next');
+        const calendarioHoje = document.getElementById('calendario-hoje');
+        const calendarioLimpar = document.getElementById('calendario-limpar');
+        const calendarioFechar = document.getElementById('calendario-fechar');
+        const STORAGE_KEY = 'microcredito_solicitacoes';
+        const formatadorMesCalendario = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' });
+        const formatadorDataPagamento = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
+        let dataMinimaPagamento = null;
+        let dataMaximaPagamento = null;
+        let mesCalendarioAtivo = null;
+        let solicitacaoAtualSalva = false;
+
+        function formatarDataInput(data) {
+            const ano = data.getFullYear();
+            const mes = String(data.getMonth() + 1).padStart(2, '0');
+            const dia = String(data.getDate()).padStart(2, '0');
+            return `${ano}-${mes}-${dia}`;
+        }
+
+        function dataSemHorario(data) {
+            return new Date(data.getFullYear(), data.getMonth(), data.getDate());
+        }
+
+        function parseDataInput(valor) {
+            if (!valor) return null;
+            const [ano, mes, dia] = valor.split('-').map(Number);
+            if (!ano || !mes || !dia) return null;
+            return new Date(ano, mes - 1, dia);
+        }
+
+        function mesmaData(dataA, dataB) {
+            if (!dataA || !dataB) return false;
+            return dataA.getFullYear() === dataB.getFullYear()
+                && dataA.getMonth() === dataB.getMonth()
+                && dataA.getDate() === dataB.getDate();
+        }
+
+        function capitalizar(texto) {
+            return texto.charAt(0).toUpperCase() + texto.slice(1);
+        }
+
+        function configurarLimiteDataPagamento() {
+            const hoje = dataSemHorario(new Date());
+            const dataMaxima = new Date(hoje);
+            dataMaxima.setDate(hoje.getDate() + 28);
+
+            dataMinimaPagamento = hoje;
+            dataMaximaPagamento = dataMaxima;
+            mesCalendarioAtivo = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+            inputDataPagamento.setAttribute('data-min', formatarDataInput(hoje));
+            inputDataPagamento.setAttribute('data-max', formatarDataInput(dataMaxima));
+            atualizarTextoDataPagamento();
+            renderizarCalendarioPagamento();
+        }
+
+        function dataDentroDoPrazo(data) {
+            return data >= dataMinimaPagamento && data <= dataMaximaPagamento;
+        }
+
+        function atualizarTextoDataPagamento() {
+            const dataSelecionada = parseDataInput(inputDataPagamento.value);
+
+            if (!dataSelecionada) {
+                textoDataPagamento.textContent = 'Escolha uma data';
+                textoDataPagamento.classList.add('text-zinc-600');
+                textoDataPagamento.classList.remove('text-zinc-100');
+                return;
+            }
+
+            textoDataPagamento.textContent = capitalizar(formatadorDataPagamento.format(dataSelecionada));
+            textoDataPagamento.classList.remove('text-zinc-600');
+            textoDataPagamento.classList.add('text-zinc-100');
+        }
+
+        function selecionarDataPagamento(data, deveFechar = true) {
+            const dataNormalizada = dataSemHorario(data);
+            if (!dataDentroDoPrazo(dataNormalizada)) return;
+
+            inputDataPagamento.value = formatarDataInput(dataNormalizada);
+            inputDataPagamento.dispatchEvent(new Event('input', { bubbles: true }));
+            mesCalendarioAtivo = new Date(dataNormalizada.getFullYear(), dataNormalizada.getMonth(), 1);
+            atualizarTextoDataPagamento();
+            renderizarCalendarioPagamento();
+
+            if (deveFechar) {
+                fecharCalendarioPagamento();
+            }
+        }
+
+        function limparDataPagamento() {
+            inputDataPagamento.value = '';
+            inputDataPagamento.dispatchEvent(new Event('input', { bubbles: true }));
+            mesCalendarioAtivo = new Date(dataMinimaPagamento.getFullYear(), dataMinimaPagamento.getMonth(), 1);
+            atualizarTextoDataPagamento();
+            renderizarCalendarioPagamento();
+        }
+
+        function renderizarCalendarioPagamento() {
+            if (!dataMinimaPagamento || !dataMaximaPagamento || !mesCalendarioAtivo) return;
+
+            const inicioMes = new Date(mesCalendarioAtivo.getFullYear(), mesCalendarioAtivo.getMonth(), 1);
+            const inicioGrade = new Date(inicioMes);
+            inicioGrade.setDate(inicioMes.getDate() - inicioMes.getDay());
+            const hoje = dataSemHorario(new Date());
+            const dataSelecionada = parseDataInput(inputDataPagamento.value);
+            const fimMesAnterior = new Date(inicioMes.getFullYear(), inicioMes.getMonth(), 0);
+            const inicioProximoMes = new Date(inicioMes.getFullYear(), inicioMes.getMonth() + 1, 1);
+
+            calendarioMes.textContent = capitalizar(formatadorMesCalendario.format(inicioMes));
+            calendarioPrev.disabled = fimMesAnterior < dataMinimaPagamento;
+            calendarioNext.disabled = inicioProximoMes > dataMaximaPagamento;
+            calendarioDias.innerHTML = '';
+
+            for (let i = 0; i < 42; i++) {
+                const dataDia = new Date(inicioGrade);
+                dataDia.setDate(inicioGrade.getDate() + i);
+
+                const botaoDia = document.createElement('button');
+                botaoDia.type = 'button';
+                botaoDia.textContent = String(dataDia.getDate());
+                botaoDia.dataset.date = formatarDataInput(dataDia);
+                botaoDia.className = 'calendar-day';
+                botaoDia.disabled = !dataDentroDoPrazo(dataDia);
+
+                if (dataDia.getMonth() !== inicioMes.getMonth()) {
+                    botaoDia.classList.add('is-muted');
+                }
+
+                if (mesmaData(dataDia, hoje)) {
+                    botaoDia.classList.add('is-today');
+                }
+
+                if (mesmaData(dataDia, dataSelecionada)) {
+                    botaoDia.classList.add('is-selected');
+                    botaoDia.setAttribute('aria-current', 'date');
+                }
+
+                calendarioDias.appendChild(botaoDia);
+            }
+        }
+
+        function abrirCalendarioPagamento() {
+            calendarioDropdown.classList.add('is-open');
+            document.body.classList.add('calendar-modal-open');
+            btnDataPagamento.setAttribute('aria-expanded', 'true');
+            renderizarCalendarioPagamento();
+            calendarioFechar.focus();
+        }
+
+        function fecharCalendarioPagamento() {
+            calendarioDropdown.classList.remove('is-open');
+            document.body.classList.remove('calendar-modal-open');
+            btnDataPagamento.setAttribute('aria-expanded', 'false');
+        }
+
+        function alternarCalendarioPagamento() {
+            if (!calendarioDropdown.classList.contains('is-open')) {
+                abrirCalendarioPagamento();
+            } else {
+                fecharCalendarioPagamento();
+            }
+        }
+
+        function alterarMesCalendario(direcao) {
+            mesCalendarioAtivo = new Date(
+                mesCalendarioAtivo.getFullYear(),
+                mesCalendarioAtivo.getMonth() + direcao,
+                1
+            );
+            renderizarCalendarioPagamento();
+        }
+
+        function checkFormValidity() {
+            let isValid = true;
+
+            // Verifica campos obrigatórios da primeira etapa
+            inputsTexts.forEach(input => {
+                if (input.value.trim() === '' || !input.checkValidity()) {
+                    isValid = false;
+                }
+            });
+
+            // Habilita ou desabilita o botão
+            if (isValid) {
+                btnAvancar.disabled = false;
+                btnAvancar.classList.remove('opacity-50', 'cursor-not-allowed');
+                btnAvancar.classList.add('hover:bg-[#059669]', 'cursor-pointer');
+            } else {
+                btnAvancar.disabled = true;
+                btnAvancar.classList.add('opacity-50', 'cursor-not-allowed');
+                btnAvancar.classList.remove('hover:bg-[#059669]', 'cursor-pointer');
+            }
+        }
+
+        // Adiciona eventos aos inputs de texto para checar a validação enquanto digita
+        inputsTexts.forEach(input => {
+            input.addEventListener('input', checkFormValidity);
+        });
+
+        btnDataPagamento.addEventListener('click', alternarCalendarioPagamento);
+
+        calendarioPrev.addEventListener('click', () => alterarMesCalendario(-1));
+        calendarioNext.addEventListener('click', () => alterarMesCalendario(1));
+        calendarioHoje.addEventListener('click', () => selecionarDataPagamento(new Date()));
+        calendarioLimpar.addEventListener('click', limparDataPagamento);
+        calendarioFechar.addEventListener('click', fecharCalendarioPagamento);
+
+        calendarioDias.addEventListener('click', event => {
+            const botaoDia = event.target.closest('button[data-date]');
+            if (!botaoDia || botaoDia.disabled) return;
+            selecionarDataPagamento(parseDataInput(botaoDia.dataset.date));
+        });
+
+        calendarioDropdown.addEventListener('click', event => {
+            if (event.target === calendarioDropdown) {
+                fecharCalendarioPagamento();
+            }
+        });
+
+        document.addEventListener('click', event => {
+            if (!calendarioPagamento.contains(event.target)) {
+                fecharCalendarioPagamento();
+            }
+        });
+
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape') {
+                fecharCalendarioPagamento();
+            }
+        });
+
+        // ----------------------------------------------------------------
+        // Controle de Navegação das Telas
+        // ----------------------------------------------------------------
+        const stepSolicitante = document.getElementById('step-solicitante');
+        const stepFiador = document.getElementById('step-fiador');
+        const stepAgradecimento = document.getElementById('step-agradecimento');
+
+        function avancarParaFiador() {
+            if(btnAvancar.disabled) return; // Segurança extra
+
+            stepSolicitante.classList.remove('opacity-100');
+            stepSolicitante.classList.add('opacity-0');
+            
+            setTimeout(() => {
+                stepSolicitante.classList.add('hidden');
+                stepFiador.classList.remove('hidden');
+                
+                void stepFiador.offsetWidth; 
+                
+                stepFiador.classList.remove('opacity-0');
+                stepFiador.classList.add('opacity-100');
+            }, 300);
+        }
+
+        function voltarParaSolicitante() {
+            stepFiador.classList.remove('opacity-100');
+            stepFiador.classList.add('opacity-0');
+            
+            setTimeout(() => {
+                stepFiador.classList.add('hidden');
+                stepSolicitante.classList.remove('hidden');
+                
+                void stepSolicitante.offsetWidth;
+                
+                stepSolicitante.classList.remove('opacity-0');
+                stepSolicitante.classList.add('opacity-100');
+            }, 300);
+        }
+
+        function finalizarSolicitacao() {
+            if (!solicitacaoAtualSalva) {
+                salvarSolicitacao();
+                solicitacaoAtualSalva = true;
+            }
+
+            stepFiador.classList.remove('opacity-100');
+            stepFiador.classList.add('opacity-0');
+
+            setTimeout(() => {
+                stepFiador.classList.add('hidden');
+                stepAgradecimento.classList.remove('hidden');
+
+                void stepAgradecimento.offsetWidth;
+
+                stepAgradecimento.classList.remove('opacity-0');
+                stepAgradecimento.classList.add('opacity-100');
+            }, 300);
+        }
+
+        function voltarParaInicio() {
+            stepAgradecimento.classList.remove('opacity-100');
+            stepAgradecimento.classList.add('opacity-0');
+
+            setTimeout(() => {
+                inputsTexts.forEach(input => input.value = '');
+                stepFiador.querySelectorAll('input, select').forEach(field => {
+                    field.value = '';
+                });
+                limparDataPagamento();
+                fecharCalendarioPagamento();
+
+                checkFormValidity();
+                solicitacaoAtualSalva = false;
+                stepAgradecimento.classList.add('hidden');
+                stepFiador.classList.add('hidden');
+                stepSolicitante.classList.remove('hidden');
+
+                void stepSolicitante.offsetWidth;
+
+                stepSolicitante.classList.remove('opacity-0');
+                stepSolicitante.classList.add('opacity-100');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 300);
+        }
+
+        function valorCampo(id) {
+            return document.getElementById(id).value.trim();
+        }
+
+        function salvarSolicitacao() {
+            const relacionamento = document.getElementById('contato-relacionamento');
+            const solicitacoes = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            const novaSolicitacao = {
+                id: `SOL-${Date.now()}`,
+                criadaEm: new Date().toISOString(),
+                status: 'Pendente',
+                solicitante: {
+                    nome: valorCampo('input-nome'),
+                    cpf: valorCampo('input-cpf'),
+                    telefone: valorCampo('input-telefone'),
+                    valor: valorCampo('input-valor'),
+                    pix: valorCampo('input-pix'),
+                    dataPagamento: valorCampo('input-data-pagamento')
+                },
+                contato: {
+                    nome: valorCampo('contato-nome'),
+                    cpf: valorCampo('contato-cpf'),
+                    telefone: valorCampo('contato-telefone'),
+                    relacionamento: relacionamento.value ? relacionamento.options[relacionamento.selectedIndex]?.text : ''
+                }
+            };
+
+            solicitacoes.unshift(novaSolicitacao);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(solicitacoes));
+        }
+
+        function iniciarAnimacaoFluxo() {
+            let cicloAtual = 0;
+            let itemAtual = 0;
+            const totalCiclos = 1;
+            const intervalo = 700;
+
+            flowSteps.forEach(step => step.classList.remove('is-visible'));
+
+            const timer = setInterval(() => {
+                if (itemAtual === 0) {
+                    flowSteps.forEach(step => step.classList.remove('is-visible'));
+                }
+
+                flowSteps[itemAtual].classList.add('is-visible');
+                itemAtual++;
+
+                if (itemAtual >= flowSteps.length) {
+                    itemAtual = 0;
+                    cicloAtual++;
+
+                    if (cicloAtual >= totalCiclos) {
+                        clearInterval(timer);
+                        flowSteps.forEach(step => step.classList.add('is-visible'));
+                    }
+                }
+            }, intervalo);
+        }
+
+        configurarLimiteDataPagamento();
+        iniciarAnimacaoFluxo();
+    </script>
+</body>
+</html>

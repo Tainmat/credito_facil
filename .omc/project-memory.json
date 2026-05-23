@@ -1,0 +1,316 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1779546230999,
+  "projectRoot": "/home/tainmat/projetos/credito_facil",
+  "techStack": {
+    "languages": [
+      {
+        "name": "JavaScript/TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "package.json"
+        ]
+      },
+      {
+        "name": "TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "tsconfig.json"
+        ]
+      }
+    ],
+    "frameworks": [
+      {
+        "name": "next",
+        "version": "14.0.4",
+        "category": "fullstack"
+      },
+      {
+        "name": "react",
+        "version": "18",
+        "category": "frontend"
+      },
+      {
+        "name": "react-dom",
+        "version": "18",
+        "category": "frontend"
+      },
+      {
+        "name": "jest",
+        "version": "29.7.0",
+        "category": "testing"
+      }
+    ],
+    "packageManager": "npm",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": "npm run build",
+    "testCommand": "npm test",
+    "lintCommand": "npm run lint",
+    "devCommand": "npm run dev",
+    "scripts": {
+      "dev": "next dev",
+      "build": "next build",
+      "test": "jest --passWithNoTests --maxWorkers=50%",
+      "test:watch": "jest --watch --maxWorkers=25%",
+      "test:ci": "jest --runInBand",
+      "generate": "npx plop --plopfile generators/plopfile.js",
+      "start": "next start",
+      "lint": "next lint",
+      "prepare": "husky install",
+      "storybook": "storybook dev -p 6006",
+      "build-storybook": "storybook build"
+    }
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": "type-based"
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "public",
+      "src"
+    ],
+    "gitBranches": null
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "generators": {
+      "path": "generators",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1779546230990,
+      "keyFiles": [
+        "plopfile.js"
+      ]
+    },
+    "public": {
+      "path": "public",
+      "purpose": "Public files",
+      "fileCount": 0,
+      "lastAccessed": 1779546230990,
+      "keyFiles": []
+    },
+    "src": {
+      "path": "src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1779546230995,
+      "keyFiles": []
+    },
+    "src/app": {
+      "path": "src/app",
+      "purpose": "Application code",
+      "fileCount": 3,
+      "lastAccessed": 1779546230996,
+      "keyFiles": [
+        "layout.tsx",
+        "page.tsx",
+        "providers.tsx"
+      ]
+    },
+    "src/components": {
+      "path": "src/components",
+      "purpose": "UI components",
+      "fileCount": 0,
+      "lastAccessed": 1779546230998,
+      "keyFiles": []
+    },
+    "src/lib": {
+      "path": "src/lib",
+      "purpose": "Library code",
+      "fileCount": 1,
+      "lastAccessed": 1779546230998,
+      "keyFiles": [
+        "registry.tsx"
+      ]
+    },
+    "src/types": {
+      "path": "src/types",
+      "purpose": "Type definitions",
+      "fileCount": 1,
+      "lastAccessed": 1779546230998,
+      "keyFiles": [
+        "jest-styled-components.d.ts"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "package.json",
+      "accessCount": 8,
+      "lastAccessed": 1779547456682,
+      "type": "file"
+    },
+    {
+      "path": "src/app/solicitacao/page.tsx",
+      "accessCount": 6,
+      "lastAccessed": 1779548509290,
+      "type": "file"
+    },
+    {
+      "path": "jest.config.js",
+      "accessCount": 4,
+      "lastAccessed": 1779547188692,
+      "type": "file"
+    },
+    {
+      "path": "CLAUDE.md",
+      "accessCount": 3,
+      "lastAccessed": 1779546774025,
+      "type": "file"
+    },
+    {
+      "path": "src/app/layout.tsx",
+      "accessCount": 3,
+      "lastAccessed": 1779547176433,
+      "type": "file"
+    },
+    {
+      "path": "src/app/providers.tsx",
+      "accessCount": 3,
+      "lastAccessed": 1779547177278,
+      "type": "file"
+    },
+    {
+      "path": "src/components/Main/index.tsx",
+      "accessCount": 3,
+      "lastAccessed": 1779547182139,
+      "type": "file"
+    },
+    {
+      "path": "src/components/Main/test.tsx",
+      "accessCount": 3,
+      "lastAccessed": 1779547184328,
+      "type": "file"
+    },
+    {
+      "path": ".jest/setup.ts",
+      "accessCount": 3,
+      "lastAccessed": 1779547185140,
+      "type": "file"
+    },
+    {
+      "path": "src/app/page.tsx",
+      "accessCount": 3,
+      "lastAccessed": 1779547649224,
+      "type": "file"
+    },
+    {
+      "path": "src/app/inicio/page.tsx",
+      "accessCount": 3,
+      "lastAccessed": 1779547685190,
+      "type": "file"
+    },
+    {
+      "path": "",
+      "accessCount": 2,
+      "lastAccessed": 1779546856047,
+      "type": "directory"
+    },
+    {
+      "path": "src/styles/global.ts",
+      "accessCount": 2,
+      "lastAccessed": 1779547043552,
+      "type": "file"
+    },
+    {
+      "path": "src/components/Main/styles.ts",
+      "accessCount": 2,
+      "lastAccessed": 1779547050354,
+      "type": "file"
+    },
+    {
+      "path": "src/lib/registry.tsx",
+      "accessCount": 2,
+      "lastAccessed": 1779547050463,
+      "type": "file"
+    },
+    {
+      "path": "tailwind.config.js",
+      "accessCount": 2,
+      "lastAccessed": 1779547174733,
+      "type": "file"
+    },
+    {
+      "path": "src/app/solicitacao/useSolicitacao.ts",
+      "accessCount": 2,
+      "lastAccessed": 1779548547419,
+      "type": "file"
+    },
+    {
+      "path": "README.md",
+      "accessCount": 1,
+      "lastAccessed": 1779546243942,
+      "type": "file"
+    },
+    {
+      "path": "tsconfig.json",
+      "accessCount": 1,
+      "lastAccessed": 1779546244047,
+      "type": "file"
+    },
+    {
+      "path": "next.config.js",
+      "accessCount": 1,
+      "lastAccessed": 1779546244268,
+      "type": "file"
+    },
+    {
+      "path": "generators/plopfile.js",
+      "accessCount": 1,
+      "lastAccessed": 1779546504092,
+      "type": "file"
+    },
+    {
+      "path": ".lintstagedrc.js",
+      "accessCount": 1,
+      "lastAccessed": 1779546504294,
+      "type": "file"
+    },
+    {
+      "path": "src/components/Main/stories.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1779546507802,
+      "type": "file"
+    },
+    {
+      "path": "html_originais/login.html",
+      "accessCount": 1,
+      "lastAccessed": 1779546858505,
+      "type": "file"
+    },
+    {
+      "path": "html_originais/home.html",
+      "accessCount": 1,
+      "lastAccessed": 1779546858954,
+      "type": "file"
+    },
+    {
+      "path": "html_originais/solicitacao.html",
+      "accessCount": 1,
+      "lastAccessed": 1779546859738,
+      "type": "file"
+    },
+    {
+      "path": "html_originais/painel-admin.html",
+      "accessCount": 1,
+      "lastAccessed": 1779546860093,
+      "type": "file"
+    },
+    {
+      "path": "src/app/globals.css",
+      "accessCount": 1,
+      "lastAccessed": 1779547151140,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

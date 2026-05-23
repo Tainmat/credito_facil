@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"rtk find /home/tainmat/projetos/credito_facil/src -name \\\"*.test.tsx\\\" -o -name \\\"*.test.ts\\\" -o -name \\\"test.tsx\\\"\"}",
+  "error": "Exit code 1\nrtk: rtk find does not support compound predicates or actions (e.g. -not, -exec). Use `find` directly.",
+  "timestamp": "2026-05-23T14:29:56.308Z",
+  "retry_count": 1
+}

@@ -1,0 +1,1303 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin | Microcredito Inteligente</title>
+
+    <script>
+        (() => {
+            try {
+                if (!localStorage.getItem('microcredito_admin_session')) {
+                    window.location.replace('login.html');
+                }
+            } catch {
+                window.location.replace('login.html');
+            }
+        })();
+    </script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+
+        select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+
+        input[type="date"] {
+            color-scheme: dark;
+        }
+
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            cursor: pointer;
+            filter: invert(65%) sepia(60%) saturate(520%) hue-rotate(110deg) brightness(92%);
+            opacity: 0.8;
+        }
+
+        .solicitacoes-grid {
+            display: grid;
+            gap: 1rem;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        }
+
+        .solicitacao-card {
+            aspect-ratio: 1 / 1;
+            background:
+                radial-gradient(circle at top right, rgba(16, 185, 129, 0.08), transparent 42%),
+                #121212;
+            border: 1px solid rgba(39, 39, 42, 0.8);
+            border-radius: 1rem;
+            min-height: 190px;
+            padding: 1rem;
+            text-align: left;
+            transition: border-color 180ms ease, transform 180ms ease, background-color 180ms ease;
+            width: 100%;
+        }
+
+        .solicitacao-card:hover {
+            border-color: rgba(16, 185, 129, 0.45);
+            transform: translateY(-2px);
+        }
+
+        .solicitacao-card:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.45);
+        }
+
+        .detail-modal {
+            align-items: center;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            display: none;
+            inset: 0;
+            justify-content: center;
+            padding: 1rem;
+            position: fixed;
+            z-index: 50;
+        }
+
+        .detail-modal.is-open {
+            display: flex;
+        }
+
+        .detail-panel {
+            background:
+                radial-gradient(circle at top, rgba(16, 185, 129, 0.08), transparent 38%),
+                #121212;
+            border: 1px solid rgba(39, 39, 42, 0.9);
+            border-radius: 1.5rem;
+            box-shadow: 0 28px 70px rgba(0, 0, 0, 0.55);
+            max-height: calc(100vh - 2rem);
+            opacity: 0;
+            overflow-y: auto;
+            padding: 1.25rem;
+            transform: translateY(8px) scale(0.98);
+            transition: opacity 180ms ease, transform 180ms ease;
+            width: min(100%, 58rem);
+        }
+
+        .detail-modal.is-open .detail-panel {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
+        body.detail-modal-open {
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-[#0a0a0a] text-zinc-100 p-4 md:p-8 selection:bg-emerald-500/30">
+    <div class="fixed top-0 left-1/2 -translate-x-1/2 w-[900px] h-[420px] bg-emerald-500/5 blur-[120px] rounded-full pointer-events-none z-0"></div>
+
+    <main class="max-w-7xl mx-auto relative z-10">
+        <header class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between mb-8">
+            <div>
+                <p class="text-sm font-semibold text-emerald-400 mb-2">Painel administrativo</p>
+                <h1 class="text-3xl md:text-5xl font-extrabold tracking-tight text-white">
+                    Solicitações de Empréstimo
+                </h1>
+            </div>
+
+            <div class="flex flex-wrap gap-3">
+                <a href="solicitacao.html" class="inline-flex items-center gap-2 rounded-xl border border-zinc-800 bg-[#121212] px-4 py-3 text-sm font-semibold text-zinc-200 hover:border-emerald-500/50 hover:text-white transition-colors">
+                    <i data-lucide="external-link" class="w-4 h-4"></i>
+                    Formulário
+                </a>
+                <button type="button" id="btn-recarregar" class="inline-flex items-center gap-2 rounded-xl bg-[#10B981] px-4 py-3 text-sm font-semibold text-white hover:bg-[#059669] transition-colors">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                    Recarregar
+                </button>
+                <button type="button" id="btn-sair" class="inline-flex items-center gap-2 rounded-xl border border-zinc-800 bg-[#121212] px-4 py-3 text-sm font-semibold text-zinc-200 hover:border-red-500/50 hover:text-white transition-colors">
+                    <i data-lucide="log-out" class="w-4 h-4"></i>
+                    Sair
+                </button>
+            </div>
+        </header>
+
+        <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5 mb-8">
+            <div class="rounded-xl border border-zinc-800/80 bg-[#121212] p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-sm text-zinc-400">Pendentes</span>
+                    <i data-lucide="clock-3" class="w-5 h-5 text-amber-400"></i>
+                </div>
+                <strong id="stat-pendente" class="text-3xl font-extrabold text-white">0</strong>
+            </div>
+
+            <div class="rounded-xl border border-zinc-800/80 bg-[#121212] p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-sm text-zinc-400">Em Análise</span>
+                    <i data-lucide="scan-search" class="w-5 h-5 text-sky-400"></i>
+                </div>
+                <strong id="stat-analise" class="text-3xl font-extrabold text-white">0</strong>
+            </div>
+
+            <div class="rounded-xl border border-zinc-800/80 bg-[#121212] p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-sm text-zinc-400">Pix Feito</span>
+                    <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-400"></i>
+                </div>
+                <strong id="stat-pix" class="text-3xl font-extrabold text-white">0</strong>
+            </div>
+
+            <div class="rounded-xl border border-zinc-800/80 bg-[#121212] p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-sm text-zinc-400">Golpe</span>
+                    <i data-lucide="shield-alert" class="w-5 h-5 text-red-400"></i>
+                </div>
+                <strong id="stat-golpe" class="text-3xl font-extrabold text-white">0</strong>
+            </div>
+
+            <div class="rounded-xl border border-zinc-800/80 bg-[#121212] p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-sm text-zinc-400">Total</span>
+                    <i data-lucide="list-checks" class="w-5 h-5 text-zinc-300"></i>
+                </div>
+                <strong id="stat-total" class="text-3xl font-extrabold text-white">0</strong>
+            </div>
+        </section>
+
+        <section class="rounded-xl border border-zinc-800/80 bg-[#121212] p-5 md:p-6 mb-8">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between mb-6">
+                <div>
+                    <h2 class="text-xl font-bold text-white flex items-center gap-3">
+                        <i data-lucide="wallet-cards" class="w-6 h-6 text-emerald-400"></i>
+                        Controle financeiro
+                    </h2>
+                    <p class="text-sm text-zinc-500 mt-2">Informe o caixa e acompanhe pagamentos, retorno e ganho das operações.</p>
+                </div>
+
+                <button type="button" id="btn-salvar-financeiro" class="inline-flex items-center justify-center gap-2 rounded-xl bg-[#10B981] px-4 py-3 text-sm font-semibold text-white hover:bg-[#059669] transition-colors">
+                    <i data-lucide="save" class="w-4 h-4"></i>
+                    Salvar caixa
+                </button>
+            </div>
+
+            <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <div class="rounded-xl border border-zinc-800/80 bg-[#0a0a0a] p-5">
+                    <div class="mb-4 flex items-start justify-between gap-3">
+                        <div>
+                            <span class="text-sm text-zinc-500">Quanto temos em caixa</span>
+                            <p id="status-caixa" class="mt-1 hidden text-xs font-semibold text-emerald-300">Valor salvo</p>
+                        </div>
+                        <button type="button" id="btn-editar-caixa" class="hidden inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-800 text-zinc-400 hover:border-emerald-500/40 hover:text-white transition-colors" aria-label="Editar valor em caixa">
+                            <i data-lucide="pencil" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+
+                    <label id="caixa-edit-mode" class="block">
+                        <input type="text" id="input-caixa" inputmode="decimal" placeholder="R$ 0,00" class="w-full rounded-xl border border-zinc-800/80 bg-[#121212] px-4 py-3.5 text-zinc-200 placeholder-zinc-600 outline-none transition-all focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50">
+                    </label>
+
+                    <strong id="stat-caixa" class="hidden text-2xl font-extrabold text-white">R$ 0,00</strong>
+                </div>
+
+                <div class="rounded-xl border border-zinc-800/80 bg-[#0a0a0a] p-5">
+                    <span class="text-sm text-zinc-500">Quanto emprestamos</span>
+                    <strong id="stat-disponibilizado" class="block mt-2 text-2xl font-extrabold text-white">R$ 0,00</strong>
+                </div>
+
+                <div class="rounded-xl border border-sky-500/30 bg-[#0a0a0a] p-5">
+                    <span class="text-sm text-sky-300">Disponível para empréstimo</span>
+                    <strong id="stat-disponivel" class="block mt-2 text-2xl font-extrabold text-white">R$ 0,00</strong>
+                </div>
+
+                <div class="rounded-xl border border-emerald-500/30 bg-[#0a0a0a] p-5">
+                    <span class="text-sm text-emerald-300">Quanto tivemos de lucro</span>
+                    <strong id="stat-ganho" class="block mt-2 text-2xl font-extrabold text-white">R$ 0,00</strong>
+                </div>
+            </div>
+        </section>
+
+        <section class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
+            <div class="relative md:max-w-md w-full">
+                <i data-lucide="search" class="absolute left-4 top-3.5 text-zinc-500 w-5 h-5"></i>
+                <input type="search" id="busca" placeholder="Buscar por nome, CPF, telefone ou PIX" class="w-full rounded-xl border border-zinc-800/80 bg-[#121212] py-3.5 pl-12 pr-4 text-zinc-200 placeholder-zinc-600 outline-none transition-all focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50">
+            </div>
+
+            <div class="relative w-full md:w-56">
+                <select id="filtro-status" class="w-full rounded-xl border border-zinc-800/80 bg-[#121212] py-3.5 pl-4 pr-11 text-zinc-200 outline-none transition-all focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50">
+                    <option value="todos">Todos os status</option>
+                    <option value="Pendente">Pendente</option>
+                    <option value="Em Análise">Em Análise</option>
+                    <option value="Pix Feito">Pix Feito</option>
+                    <option value="Golpe">Golpe</option>
+                </select>
+                <i data-lucide="chevron-down" class="absolute right-4 top-4 text-zinc-500 w-5 h-5 pointer-events-none"></i>
+            </div>
+        </section>
+
+        <section id="lista-solicitacoes" class="solicitacoes-grid"></section>
+
+        <section id="estado-vazio" class="hidden rounded-xl border border-dashed border-zinc-800 bg-[#121212] p-10 text-center">
+            <div class="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-zinc-900 text-zinc-500">
+                <i data-lucide="inbox" class="w-7 h-7"></i>
+            </div>
+            <h2 class="text-xl font-bold text-white mb-2">Nenhuma solicitação encontrada</h2>
+            <p class="text-zinc-500">As solicitações enviadas pelo formulário aparecerão aqui.</p>
+        </section>
+    </main>
+
+    <div id="modal-solicitacao" class="detail-modal" role="dialog" aria-modal="true" aria-labelledby="modal-solicitacao-titulo">
+        <div id="modal-solicitacao-conteudo" class="detail-panel"></div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        const AUTH_KEY = 'microcredito_admin_session';
+        const STORAGE_KEY = 'microcredito_solicitacoes';
+        const FINANCEIRO_KEY = 'microcredito_financeiro';
+        const TAXA_JUROS_FIXO = 0.12;
+        const TAXA_MULTA_ATRASO = 0.02;
+        const TAXA_JUROS_ATRASO_DIA = 0.00033;
+        const MS_POR_DIA = 24 * 60 * 60 * 1000;
+        const listaEl = document.getElementById('lista-solicitacoes');
+        const estadoVazioEl = document.getElementById('estado-vazio');
+        const buscaEl = document.getElementById('busca');
+        const filtroStatusEl = document.getElementById('filtro-status');
+        const inputCaixaEl = document.getElementById('input-caixa');
+        const statCaixaEl = document.getElementById('stat-caixa');
+        const statDisponivelEl = document.getElementById('stat-disponivel');
+        const statusCaixaEl = document.getElementById('status-caixa');
+        const caixaEditModeEl = document.getElementById('caixa-edit-mode');
+        const btnSalvarFinanceiroEl = document.getElementById('btn-salvar-financeiro');
+        const btnEditarCaixaEl = document.getElementById('btn-editar-caixa');
+        const btnSairEl = document.getElementById('btn-sair');
+        const modalSolicitacaoEl = document.getElementById('modal-solicitacao');
+        const modalSolicitacaoConteudoEl = document.getElementById('modal-solicitacao-conteudo');
+        const cardsMinimizados = new Set();
+        let solicitacaoAbertaId = null;
+
+        function carregarSolicitacoes() {
+            try {
+                return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            } catch {
+                return [];
+            }
+        }
+
+        function salvarSolicitacoes(solicitacoes) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(solicitacoes));
+        }
+
+        function carregarFinanceiro() {
+            try {
+                return JSON.parse(localStorage.getItem(FINANCEIRO_KEY) || '{}');
+            } catch {
+                return {};
+            }
+        }
+
+        function salvarFinanceiro() {
+            const valorCaixa = formatarMoeda(numeroMoeda(inputCaixaEl.value));
+            inputCaixaEl.value = valorCaixa;
+            localStorage.setItem(FINANCEIRO_KEY, JSON.stringify({
+                caixa: valorCaixa,
+                caixaSalvo: true
+            }));
+            atualizarVisualCaixa(true);
+        }
+
+        function texto(valor) {
+            const textoSeguro = String(valor || 'Nao informado');
+            return textoSeguro
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
+
+        function atributo(valor) {
+            return String(valor || '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
+
+        function numeroMoeda(valor) {
+            const textoLimpo = String(valor || '').replace(/[^\d,.-]/g, '');
+            if (!textoLimpo) return 0;
+            let normalizado = textoLimpo;
+
+            if (textoLimpo.includes(',')) {
+                normalizado = textoLimpo.replace(/\./g, '').replace(',', '.');
+            } else if (/\.\d{3}($|\D)/.test(textoLimpo)) {
+                normalizado = textoLimpo.replace(/\./g, '');
+            }
+
+            const numero = Number(normalizado);
+            return Number.isFinite(numero) ? numero : 0;
+        }
+
+        function formatarMoeda(valor) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(valor || 0);
+        }
+
+        function formatarCampoCaixa() {
+            const digitos = inputCaixaEl.value.replace(/\D/g, '');
+
+            if (!digitos) {
+                inputCaixaEl.value = '';
+                atualizarFinanceiro(carregarSolicitacoes());
+                return;
+            }
+
+            inputCaixaEl.value = formatarMoeda(Number(digitos) / 100);
+            atualizarFinanceiro(carregarSolicitacoes());
+        }
+
+        function atualizarVisualCaixa(estaSalvo) {
+            const valorCaixa = inputCaixaEl.value.trim() || formatarMoeda(0);
+
+            statCaixaEl.textContent = valorCaixa;
+            caixaEditModeEl.classList.toggle('hidden', estaSalvo);
+            statCaixaEl.classList.toggle('hidden', !estaSalvo);
+            statusCaixaEl.classList.toggle('hidden', !estaSalvo);
+            btnEditarCaixaEl.classList.toggle('hidden', !estaSalvo);
+            btnSalvarFinanceiroEl.classList.toggle('hidden', estaSalvo);
+
+            lucide.createIcons();
+        }
+
+        function editarCaixa() {
+            atualizarVisualCaixa(false);
+            inputCaixaEl.focus();
+            inputCaixaEl.select();
+        }
+
+        function formatarData(dataISO) {
+            if (!dataISO) return 'Nao informado';
+            return new Intl.DateTimeFormat('pt-BR', {
+                dateStyle: 'short',
+                timeStyle: 'short'
+            }).format(new Date(dataISO));
+        }
+
+        function formatarDataCurta(data) {
+            if (!data) return '';
+            const [ano, mes, dia] = data.split('-').map(Number);
+            if (!ano || !mes || !dia) return data;
+            return new Intl.DateTimeFormat('pt-BR').format(new Date(ano, mes - 1, dia));
+        }
+
+        function formatarDataPagamentoRegistrado(dataISO) {
+            if (!dataISO) return 'Nao informado';
+            const data = new Date(dataISO);
+            if (Number.isNaN(data.getTime())) return 'Nao informado';
+            return new Intl.DateTimeFormat('pt-BR').format(data);
+        }
+
+        function formatarDataInputPagamento(dataISO) {
+            if (!dataISO) return '';
+            const data = new Date(dataISO);
+            if (Number.isNaN(data.getTime())) return '';
+            const ano = data.getFullYear();
+            const mes = String(data.getMonth() + 1).padStart(2, '0');
+            const dia = String(data.getDate()).padStart(2, '0');
+            return `${ano}-${mes}-${dia}`;
+        }
+
+        function criarDataPagamentoManual(valor) {
+            const [ano, mes, dia] = String(valor || '').split('-').map(Number);
+            if (!ano || !mes || !dia) return null;
+
+            const data = new Date(ano, mes - 1, dia, 12, 0, 0, 0);
+            if (data.getFullYear() !== ano || data.getMonth() !== mes - 1 || data.getDate() !== dia) {
+                return null;
+            }
+
+            return data;
+        }
+
+        function normalizarTextoHistorico(valor) {
+            return String(valor || '')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase()
+                .replace(/[^a-z0-9]/g, '');
+        }
+
+        function chaveHistoricoSolicitante(item) {
+            const cpf = String(item.solicitante?.cpf || '').replace(/\D/g, '');
+            const telefone = String(item.solicitante?.telefone || '').replace(/\D/g, '');
+            const nome = normalizarTextoHistorico(item.solicitante?.nome);
+
+            if (cpf) return `cpf:${cpf}`;
+            if (telefone) return `telefone:${telefone}`;
+            if (nome) return `nome:${nome}`;
+            return `id:${item.id}`;
+        }
+
+        function parseDataPagamento(data) {
+            if (!data) return null;
+            const [ano, mes, dia] = data.split('-').map(Number);
+            if (!ano || !mes || !dia) return null;
+            return new Date(ano, mes - 1, dia, 23, 59, 59, 999);
+        }
+
+        function dataSemHorario(data) {
+            return new Date(data.getFullYear(), data.getMonth(), data.getDate());
+        }
+
+        function diasDeAtraso(dataPagamento, dataReferencia = new Date()) {
+            const vencimento = parseDataPagamento(dataPagamento);
+            if (!vencimento || Number.isNaN(dataReferencia.getTime())) return 0;
+
+            const vencimentoDia = dataSemHorario(vencimento);
+            const referenciaDia = dataSemHorario(dataReferencia);
+            return Math.max(0, Math.floor((referenciaDia - vencimentoDia) / MS_POR_DIA));
+        }
+
+        function calcularValorAtualizado(item, dataReferenciaManual = null) {
+            const valorEmprestado = numeroMoeda(item.solicitante?.valor);
+            const valorComJuros = valorEmprestado * (1 + TAXA_JUROS_FIXO);
+            const referenciaManual = dataReferenciaManual instanceof Date && !Number.isNaN(dataReferenciaManual.getTime()) ? dataReferenciaManual : null;
+            const pagoEm = item.pagamento?.pagoEm ? new Date(item.pagamento.pagoEm) : null;
+            const dataReferencia = referenciaManual || (pagoEm && !Number.isNaN(pagoEm.getTime()) ? pagoEm : new Date());
+            const atrasoDias = diasDeAtraso(item.solicitante?.dataPagamento, dataReferencia);
+            const multaAtraso = atrasoDias > 0 ? valorComJuros * TAXA_MULTA_ATRASO : 0;
+            const jurosAtraso = atrasoDias > 0 ? valorComJuros * TAXA_JUROS_ATRASO_DIA * atrasoDias : 0;
+
+            return {
+                valorEmprestado,
+                valorComJuros,
+                valorAtualizado: valorComJuros + multaAtraso + jurosAtraso,
+                jurosFixo: valorComJuros - valorEmprestado,
+                multaAtraso,
+                jurosAtraso,
+                atrasoDias
+            };
+        }
+
+        function classeValorAtualizado(resumoJuros) {
+            return resumoJuros.atrasoDias > 0 ? 'text-amber-300' : 'text-emerald-300';
+        }
+
+        function textoDetalheJuros(resumoJuros) {
+            if (resumoJuros.atrasoDias <= 0) {
+                return `${formatarMoeda(resumoJuros.jurosFixo)} de juros fixos (12%)`;
+            }
+
+            return `${formatarMoeda(resumoJuros.jurosFixo)} de juros fixos (12%) + ${formatarMoeda(resumoJuros.multaAtraso)} de multa (2%) + ${formatarMoeda(resumoJuros.jurosAtraso)} de atraso (${resumoJuros.atrasoDias} dia${resumoJuros.atrasoDias > 1 ? 's' : ''})`;
+        }
+
+        function atualizarPreviaJurosPagamento(event) {
+            const campoData = event.target.closest('[data-payment-date]');
+            if (!campoData) return;
+
+            const areaPagamento = campoData.closest('[data-payment-scope]') || campoData.closest('article');
+            const id = areaPagamento?.querySelector('[data-action="payment"]')?.dataset.id;
+            const item = buscarSolicitacao(id);
+
+            if (!areaPagamento || !item) return;
+
+            const dataPagamento = criarDataPagamentoManual(campoData.value);
+            const resumoJuros = calcularValorAtualizado(item, dataPagamento);
+            const campoValor = areaPagamento.querySelector('[data-payment-value]');
+            const valorAtualizadoEl = areaPagamento.querySelector('[data-payment-updated]');
+            const detalheJurosEl = areaPagamento.querySelector('[data-payment-interest-detail]');
+
+            if (campoValor) {
+                campoValor.placeholder = `Valor atualizado: ${formatarMoeda(resumoJuros.valorAtualizado)}`;
+            }
+
+            if (valorAtualizadoEl) {
+                valorAtualizadoEl.textContent = formatarMoeda(resumoJuros.valorAtualizado);
+                valorAtualizadoEl.classList.remove('text-amber-300', 'text-emerald-300');
+                valorAtualizadoEl.classList.add(classeValorAtualizado(resumoJuros));
+            }
+
+            if (detalheJurosEl) {
+                detalheJurosEl.textContent = textoDetalheJuros(resumoJuros);
+            }
+        }
+
+        function pagamentoFoiCorreto(item) {
+            if (!item.pagamento?.pago) return false;
+
+            const vencimento = parseDataPagamento(item.solicitante?.dataPagamento);
+            const pagoEm = item.pagamento?.pagoEm ? new Date(item.pagamento.pagoEm) : null;
+
+            if (!vencimento || !pagoEm || Number.isNaN(pagoEm.getTime())) return true;
+            return pagoEm <= vencimento;
+        }
+
+        function obterHistoricoSolicitante(itemAtual) {
+            const chaveAtual = chaveHistoricoSolicitante(itemAtual);
+            const historico = carregarSolicitacoes()
+                .filter(item => chaveHistoricoSolicitante(item) === chaveAtual)
+                .sort((a, b) => new Date(a.criadaEm || 0) - new Date(b.criadaEm || 0));
+            const anteriores = historico.filter(item => item.id !== itemAtual.id);
+            const pagosCorretamente = anteriores.filter(pagamentoFoiCorreto);
+            const pagosComAtraso = anteriores.filter(item => item.pagamento?.pago && !pagamentoFoiCorreto(item));
+            const emAberto = anteriores.filter(item => !item.pagamento?.pago);
+            let avaliacao = 'Primeira solicitação registrada';
+            let classeAvaliacao = 'border-sky-500/30 bg-sky-500/10 text-sky-300';
+
+            if (anteriores.length > 0 && emAberto.length === 0 && pagosComAtraso.length === 0) {
+                avaliacao = 'Pagou corretamente todas as vezes';
+                classeAvaliacao = 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300';
+            } else if (anteriores.length > 0) {
+                avaliacao = 'Histórico pede análise antes de aumentar crédito';
+                classeAvaliacao = 'border-amber-500/30 bg-amber-500/10 text-amber-300';
+            }
+
+            return {
+                total: historico.length,
+                anteriores: anteriores.length,
+                pagosCorretamente: pagosCorretamente.length,
+                pagosComAtraso: pagosComAtraso.length,
+                emAberto: emAberto.length,
+                avaliacao,
+                classeAvaliacao
+            };
+        }
+
+        function normalizarStatus(status) {
+            if (status === 'PIX feito') return 'Pix Feito';
+            if (status === 'Em análise') return 'Em Análise';
+            return status || 'Pendente';
+        }
+
+        function classeStatus(status) {
+            if (status === 'Pix Feito') return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300';
+            if (status === 'Em Análise') return 'border-sky-500/30 bg-sky-500/10 text-sky-300';
+            if (status === 'Golpe') return 'border-red-500/30 bg-red-500/10 text-red-300';
+            return 'border-amber-500/30 bg-amber-500/10 text-amber-300';
+        }
+
+        function atualizarIndicadores(solicitacoes) {
+            document.getElementById('stat-pendente').textContent = solicitacoes.filter(item => normalizarStatus(item.status) === 'Pendente').length;
+            document.getElementById('stat-analise').textContent = solicitacoes.filter(item => normalizarStatus(item.status) === 'Em Análise').length;
+            document.getElementById('stat-pix').textContent = solicitacoes.filter(item => normalizarStatus(item.status) === 'Pix Feito').length;
+            document.getElementById('stat-golpe').textContent = solicitacoes.filter(item => normalizarStatus(item.status) === 'Golpe').length;
+            document.getElementById('stat-total').textContent = solicitacoes.length;
+        }
+
+        function atualizarFinanceiro(solicitacoes) {
+            const disponibilizado = solicitacoes.reduce((total, item) => {
+                if (normalizarStatus(item.status) !== 'Pix Feito') return total;
+                return total + numeroMoeda(item.solicitante?.valor);
+            }, 0);
+
+            const ganho = solicitacoes.reduce((total, item) => {
+                if (!item.pagamento?.pago) return total;
+                const valorEmprestado = numeroMoeda(item.solicitante?.valor);
+                const valorPago = numeroMoeda(item.pagamento.valorPago);
+                return total + (valorPago - valorEmprestado);
+            }, 0);
+            const caixa = numeroMoeda(inputCaixaEl.value);
+            const disponivel = caixa - disponibilizado;
+
+            statCaixaEl.textContent = inputCaixaEl.value.trim() || formatarMoeda(0);
+            statDisponivelEl.textContent = formatarMoeda(disponivel);
+            statDisponivelEl.classList.toggle('text-red-300', disponivel < 0);
+            statDisponivelEl.classList.toggle('text-white', disponivel >= 0);
+            document.getElementById('stat-disponibilizado').textContent = formatarMoeda(disponibilizado);
+            document.getElementById('stat-ganho').textContent = formatarMoeda(ganho);
+        }
+
+        function preencherFinanceiro() {
+            const financeiro = carregarFinanceiro();
+            const caixa = financeiro.caixa ? formatarMoeda(numeroMoeda(financeiro.caixa)) : '';
+
+            inputCaixaEl.value = caixa;
+            atualizarVisualCaixa(Boolean(caixa && financeiro.caixaSalvo !== false));
+        }
+
+        function filtrarSolicitacoes(solicitacoes) {
+            const busca = buscaEl.value.trim().toLowerCase();
+            const status = filtroStatusEl.value;
+
+            return solicitacoes.filter(item => {
+                const atendeStatus = status === 'todos' || normalizarStatus(item.status) === status;
+                const conteudo = JSON.stringify(item).toLowerCase();
+                return atendeStatus && (!busca || conteudo.includes(busca));
+            });
+        }
+
+        function renderizarDetalhadoAntigo() {
+            const solicitacoes = carregarSolicitacoes();
+            const solicitacoesFiltradas = filtrarSolicitacoes(solicitacoes);
+
+            atualizarIndicadores(solicitacoes);
+            atualizarFinanceiro(solicitacoes);
+            listaEl.innerHTML = '';
+            estadoVazioEl.classList.toggle('hidden', solicitacoesFiltradas.length > 0);
+
+            solicitacoesFiltradas.forEach(item => {
+                const statusAtual = normalizarStatus(item.status);
+                const pagamentoRegistrado = Boolean(item.pagamento?.pago);
+                const resumoJuros = calcularValorAtualizado(item);
+                const valorEmprestado = resumoJuros.valorEmprestado;
+                const valorPago = numeroMoeda(item.pagamento?.valorPago);
+                const dataPagamentoInput = formatarDataInputPagamento(item.pagamento?.pagoEm);
+                const ganhoSolicitacao = pagamentoRegistrado ? valorPago - valorEmprestado : 0;
+                const classeGanho = ganhoSolicitacao >= 0 ? 'text-emerald-300' : 'text-red-300';
+                const dadosMinimizados = cardsMinimizados.has(item.id);
+                const card = document.createElement('article');
+                card.dataset.paymentScope = '';
+                card.className = 'rounded-xl border border-zinc-800/80 bg-[#121212] p-5 md:p-6';
+                card.innerHTML = `
+                    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div>
+                            <div class="flex flex-wrap items-center gap-3 mb-2">
+                                <h2 class="text-xl font-bold text-white">${texto(item.solicitante?.nome)}</h2>
+                                <span class="rounded-full border px-3 py-1 text-xs font-semibold ${classeStatus(statusAtual)}">${texto(statusAtual)}</span>
+                            </div>
+                            <p class="text-sm text-zinc-500">${texto(item.id)} • Recebida em ${formatarData(item.criadaEm)}</p>
+                        </div>
+
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button" data-action="copy-pix" data-id="${texto(item.id)}" class="inline-flex items-center gap-2 rounded-lg border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-200 hover:border-emerald-500/50 hover:text-white transition-colors">
+                                <i data-lucide="copy" class="w-4 h-4"></i>
+                                Copiar PIX
+                            </button>
+                            <div class="relative w-full sm:w-auto">
+                                <button type="button" data-action="toggle-status" data-id="${texto(item.id)}" class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-200 hover:border-emerald-500/50 hover:text-white transition-colors sm:w-auto">
+                                    <i data-lucide="list-filter" class="w-4 h-4"></i>
+                                    Alterar status
+                                    <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                                </button>
+                                <div data-status-menu="${texto(item.id)}" class="hidden mt-2 w-full rounded-lg border border-zinc-800 bg-[#0a0a0a] p-1 shadow-2xl sm:absolute sm:right-0 sm:z-20 sm:w-48">
+                                    <button type="button" data-action="set-status" data-id="${texto(item.id)}" data-status="Pix Feito" class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold text-emerald-300 hover:bg-emerald-500/10">
+                                        <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+                                        Pix Feito
+                                    </button>
+                                    <button type="button" data-action="set-status" data-id="${texto(item.id)}" data-status="Em Análise" class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold text-sky-300 hover:bg-sky-500/10">
+                                        <i data-lucide="scan-search" class="w-4 h-4"></i>
+                                        Em Análise
+                                    </button>
+                                    <button type="button" data-action="set-status" data-id="${texto(item.id)}" data-status="Golpe" class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold text-red-300 hover:bg-red-500/10">
+                                        <i data-lucide="shield-alert" class="w-4 h-4"></i>
+                                        Golpe
+                                    </button>
+                                </div>
+                            </div>
+                            <button type="button" data-action="toggle-details" data-id="${texto(item.id)}" class="inline-flex items-center gap-2 rounded-lg border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-200 hover:border-emerald-500/50 hover:text-white transition-colors">
+                                <i data-lucide="chevron-up" class="w-4 h-4 transition-transform ${dadosMinimizados ? 'rotate-180' : ''}"></i>
+                                <span data-toggle-text>${dadosMinimizados ? 'Mostrar dados' : 'Minimizar dados'}</span>
+                            </button>
+                            <button type="button" data-action="delete" data-id="${texto(item.id)}" class="inline-flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-200 hover:bg-red-500/20 transition-colors">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                Remover
+                            </button>
+                        </div>
+                    </div>
+
+                    <div data-details class="${dadosMinimizados ? 'hidden' : ''} mt-6 grid gap-6 border-t border-zinc-800 pt-5 lg:grid-cols-2 lg:gap-8">
+                        <div>
+                            <h3 class="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-emerald-400">
+                                <i data-lucide="user" class="w-4 h-4"></i>
+                                Solicitante
+                            </h3>
+                            <dl class="grid gap-3 text-sm">
+                                <div class="flex justify-between gap-4"><dt class="text-zinc-500">Nome</dt><dd class="text-right text-zinc-200">${texto(item.solicitante?.nome)}</dd></div>
+                                <div class="flex justify-between gap-4"><dt class="text-zinc-500">CPF</dt><dd class="text-right text-zinc-200">${texto(item.solicitante?.cpf)}</dd></div>
+                                <div class="flex justify-between gap-4"><dt class="text-zinc-500">Telefone</dt><dd class="text-right text-zinc-200">${texto(item.solicitante?.telefone)}</dd></div>
+                                <div class="flex justify-between gap-4"><dt class="text-zinc-500">Valor</dt><dd class="text-right font-semibold text-white">${texto(item.solicitante?.valor)}</dd></div>
+                                <div class="flex justify-between gap-4"><dt class="text-zinc-500">Chave PIX</dt><dd class="text-right text-zinc-200 break-all">${texto(item.solicitante?.pix)}</dd></div>
+                                <div class="flex justify-between gap-4"><dt class="text-zinc-500">Data de vencimento</dt><dd class="text-right text-zinc-200">${texto(formatarDataCurta(item.solicitante?.dataPagamento))}</dd></div>
+                            </dl>
+                        </div>
+
+                        <div class="lg:border-l lg:border-zinc-800 lg:pl-8">
+                            <h3 class="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-emerald-400">
+                                <i data-lucide="users" class="w-4 h-4"></i>
+                                Contato de Confiança
+                            </h3>
+                            <dl class="grid gap-3 text-sm">
+                                <div class="flex justify-between gap-4"><dt class="text-zinc-500">Nome</dt><dd class="text-right text-zinc-200">${texto(item.contato?.nome)}</dd></div>
+                                <div class="flex justify-between gap-4"><dt class="text-zinc-500">CPF</dt><dd class="text-right text-zinc-200">${texto(item.contato?.cpf)}</dd></div>
+                                <div class="flex justify-between gap-4"><dt class="text-zinc-500">Telefone</dt><dd class="text-right text-zinc-200">${texto(item.contato?.telefone)}</dd></div>
+                                <div class="flex justify-between gap-4"><dt class="text-zinc-500">Relacionamento</dt><dd class="text-right text-zinc-200">${texto(item.contato?.relacionamento)}</dd></div>
+                            </dl>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 border-t border-zinc-800 pt-5">
+                            <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                                <div>
+                                    <h3 class="mb-2 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-emerald-400">
+                                        <i data-lucide="receipt" class="w-4 h-4"></i>
+                                        Pagamento do cliente
+                                    </h3>
+                                    <p class="text-sm ${pagamentoRegistrado ? 'text-emerald-300' : 'text-zinc-500'}">
+                                        ${pagamentoRegistrado ? `Pagamento registrado em ${formatarDataPagamentoRegistrado(item.pagamento?.pagoEm)}` : 'Aguardando registro de pagamento'}
+                                    </p>
+                                </div>
+
+                                <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(180px,1fr)_minmax(155px,0.85fr)_auto_auto]">
+                                    <label class="grid gap-1">
+                                        <span class="text-xs font-semibold text-zinc-500">Valor pago</span>
+                                        <input type="text" inputmode="decimal" data-payment-value value="${atributo(item.pagamento?.valorPago)}" placeholder="${atributo('Valor atualizado: ' + formatarMoeda(resumoJuros.valorAtualizado))}" class="rounded-lg border border-zinc-800/80 bg-[#0a0a0a] px-3 py-2.5 text-sm text-zinc-200 placeholder-zinc-600 outline-none transition-all focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50">
+                                    </label>
+                                    <label class="grid gap-1">
+                                        <span class="text-xs font-semibold text-zinc-500">Data do pagamento</span>
+                                        <input type="date" data-payment-date value="${atributo(dataPagamentoInput)}" class="rounded-lg border border-zinc-800/80 bg-[#0a0a0a] px-3 py-2.5 text-sm text-zinc-200 outline-none transition-all focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50">
+                                    </label>
+                                    <button type="button" data-action="payment" data-id="${texto(item.id)}" class="inline-flex items-center justify-center gap-2 self-end rounded-lg bg-[#10B981] px-3 py-2.5 text-sm font-semibold text-white hover:bg-[#059669] transition-colors">
+                                        <i data-lucide="badge-dollar-sign" class="w-4 h-4"></i>
+                                        Marcar pago
+                                    </button>
+                                    <button type="button" data-action="clear-payment" data-id="${texto(item.id)}" class="inline-flex items-center justify-center gap-2 self-end rounded-lg border border-zinc-700 px-3 py-2.5 text-sm font-semibold text-zinc-200 hover:border-red-500/40 hover:text-white transition-colors">
+                                        <i data-lucide="x" class="w-4 h-4"></i>
+                                        Limpar
+                                    </button>
+                                </div>
+                            </div>
+
+                            <dl class="mt-5 grid gap-3 text-sm md:grid-cols-4">
+                                <div>
+                                    <dt class="text-zinc-500">Valor emprestado</dt>
+                                    <dd class="mt-1 font-semibold text-white">${formatarMoeda(valorEmprestado)}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-zinc-500">Valor atualizado</dt>
+                                    <dd data-payment-updated class="mt-1 font-semibold ${classeValorAtualizado(resumoJuros)}">${formatarMoeda(resumoJuros.valorAtualizado)}</dd>
+                                    <dd data-payment-interest-detail class="mt-1 text-xs text-zinc-500">${texto(textoDetalheJuros(resumoJuros))}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-zinc-500">Valor pago</dt>
+                                    <dd class="mt-1 font-semibold text-white">${pagamentoRegistrado ? formatarMoeda(valorPago) : 'Nao informado'}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-zinc-500">Ganho nessa solicitação</dt>
+                                    <dd class="mt-1 font-semibold ${classeGanho}">${pagamentoRegistrado ? formatarMoeda(ganhoSolicitacao) : 'R$ 0,00'}</dd>
+                                </div>
+                            </dl>
+                        </div>
+                `;
+
+                listaEl.appendChild(card);
+            });
+
+            lucide.createIcons();
+        }
+
+        function renderizar() {
+            const solicitacoes = carregarSolicitacoes();
+            const solicitacoesFiltradas = filtrarSolicitacoes(solicitacoes);
+
+            atualizarIndicadores(solicitacoes);
+            atualizarFinanceiro(solicitacoes);
+            listaEl.innerHTML = '';
+            estadoVazioEl.classList.toggle('hidden', solicitacoesFiltradas.length > 0);
+
+            solicitacoesFiltradas.forEach(item => {
+                const statusAtual = normalizarStatus(item.status);
+                const resumoJuros = calcularValorAtualizado(item);
+                const card = document.createElement('button');
+
+                card.type = 'button';
+                card.dataset.action = 'open-details';
+                card.dataset.id = item.id;
+                card.className = 'solicitacao-card';
+                card.innerHTML = `
+                    <div class="flex h-full flex-col justify-between gap-5">
+                        <div>
+                            <div class="mb-4 flex items-start justify-between gap-3">
+                                <span class="rounded-full border px-2.5 py-1 text-xs font-semibold ${classeStatus(statusAtual)}">${texto(statusAtual)}</span>
+                                <i data-lucide="external-link" class="h-4 w-4 shrink-0 text-zinc-500"></i>
+                            </div>
+                            <h2 class="truncate text-lg font-bold text-white">${texto(item.solicitante?.nome)}</h2>
+                            <p class="mt-1 truncate text-xs text-zinc-500">${texto(item.id)}</p>
+                        </div>
+
+                        <dl class="grid gap-3 text-sm">
+                            <div>
+                                <dt class="text-zinc-500">Valor solicitado</dt>
+                                <dd class="mt-1 font-bold text-white">${texto(item.solicitante?.valor)}</dd>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <dt class="text-zinc-500">Pagamento</dt>
+                                    <dd class="mt-1 font-semibold text-zinc-200">${texto(formatarDataCurta(item.solicitante?.dataPagamento))}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-zinc-500">Atualizado</dt>
+                                    <dd class="mt-1 font-semibold ${classeValorAtualizado(resumoJuros)}">${formatarMoeda(resumoJuros.valorAtualizado)}</dd>
+                                </div>
+                            </div>
+                        </dl>
+
+                        <div class="flex items-center justify-between border-t border-zinc-800 pt-4">
+                            <span class="text-xs text-zinc-500">${formatarData(item.criadaEm)}</span>
+                            <span class="text-sm font-semibold text-emerald-300">Detalhes</span>
+                        </div>
+                    </div>
+                `;
+
+                listaEl.appendChild(card);
+            });
+
+            lucide.createIcons();
+        }
+
+        function buscarSolicitacao(id) {
+            return carregarSolicitacoes().find(item => item.id === id);
+        }
+
+        function htmlModalSolicitacao(item) {
+            const statusAtual = normalizarStatus(item.status);
+            const pagamentoRegistrado = Boolean(item.pagamento?.pago);
+            const resumoJuros = calcularValorAtualizado(item);
+            const valorEmprestado = resumoJuros.valorEmprestado;
+            const valorPago = numeroMoeda(item.pagamento?.valorPago);
+            const dataPagamentoInput = formatarDataInputPagamento(item.pagamento?.pagoEm);
+            const ganhoSolicitacao = pagamentoRegistrado ? valorPago - valorEmprestado : 0;
+            const classeGanho = ganhoSolicitacao >= 0 ? 'text-emerald-300' : 'text-red-300';
+            const historico = obterHistoricoSolicitante(item);
+
+            return `
+                <article data-payment-scope>
+                    <header class="flex flex-col gap-4 border-b border-zinc-800 pb-5 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                            <div class="mb-2 flex flex-wrap items-center gap-3">
+                                <h2 id="modal-solicitacao-titulo" class="text-2xl font-extrabold text-white">${texto(item.solicitante?.nome)}</h2>
+                                <span class="rounded-full border px-3 py-1 text-xs font-semibold ${classeStatus(statusAtual)}">${texto(statusAtual)}</span>
+                            </div>
+                            <p class="text-sm text-zinc-500">${texto(item.id)} • Recebida em ${formatarData(item.criadaEm)}</p>
+                        </div>
+
+                        <button type="button" data-action="close-modal" class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-800 bg-[#0a0a0a] text-zinc-300 transition-colors hover:border-emerald-500/40 hover:text-white" aria-label="Fechar detalhes">
+                            <i data-lucide="x" class="h-5 w-5"></i>
+                        </button>
+                    </header>
+
+                    <div class="mt-5 flex flex-wrap gap-2">
+                        <button type="button" data-action="copy-pix" data-id="${atributo(item.id)}" class="inline-flex items-center gap-2 rounded-lg border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-200 transition-colors hover:border-emerald-500/50 hover:text-white">
+                            <i data-lucide="copy" class="w-4 h-4"></i>
+                            Copiar PIX
+                        </button>
+                        <div class="relative w-full sm:w-auto">
+                            <button type="button" data-action="toggle-status" data-id="${atributo(item.id)}" class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-200 transition-colors hover:border-emerald-500/50 hover:text-white sm:w-auto">
+                                <i data-lucide="list-filter" class="w-4 h-4"></i>
+                                Alterar status
+                                <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                            </button>
+                            <div data-status-menu="${atributo(item.id)}" class="hidden mt-2 w-full rounded-lg border border-zinc-800 bg-[#0a0a0a] p-1 shadow-2xl sm:absolute sm:left-0 sm:z-20 sm:w-48">
+                                <button type="button" data-action="set-status" data-id="${atributo(item.id)}" data-status="Pix Feito" class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold text-emerald-300 hover:bg-emerald-500/10">
+                                    <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+                                    Pix Feito
+                                </button>
+                                <button type="button" data-action="set-status" data-id="${atributo(item.id)}" data-status="Em Análise" class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold text-sky-300 hover:bg-sky-500/10">
+                                    <i data-lucide="scan-search" class="w-4 h-4"></i>
+                                    Em Análise
+                                </button>
+                                <button type="button" data-action="set-status" data-id="${atributo(item.id)}" data-status="Golpe" class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold text-red-300 hover:bg-red-500/10">
+                                    <i data-lucide="shield-alert" class="w-4 h-4"></i>
+                                    Golpe
+                                </button>
+                            </div>
+                        </div>
+                        <button type="button" data-action="delete" data-id="${atributo(item.id)}" class="inline-flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-200 transition-colors hover:bg-red-500/20">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            Remover
+                        </button>
+                    </div>
+
+                    <section class="mt-6 rounded-xl border border-zinc-800/80 bg-[#0a0a0a] p-5">
+                        <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div>
+                                <h3 class="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-emerald-400">
+                                    <i data-lucide="history" class="w-4 h-4"></i>
+                                    Histórico do solicitante
+                                </h3>
+                                <p class="mt-2 text-sm text-zinc-500">Baseado nas solicitações com o mesmo CPF, telefone ou nome.</p>
+                            </div>
+                            <span class="rounded-full border px-3 py-1 text-xs font-semibold ${historico.classeAvaliacao}">${texto(historico.avaliacao)}</span>
+                        </div>
+
+                        <dl class="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                            <div class="rounded-lg border border-zinc-800 bg-[#121212] p-3">
+                                <dt class="text-zinc-500">Vezes que pediu</dt>
+                                <dd class="mt-1 text-2xl font-extrabold text-white">${historico.total}</dd>
+                            </div>
+                            <div class="rounded-lg border border-zinc-800 bg-[#121212] p-3">
+                                <dt class="text-zinc-500">Pedidos anteriores</dt>
+                                <dd class="mt-1 text-2xl font-extrabold text-white">${historico.anteriores}</dd>
+                            </div>
+                            <div class="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3">
+                                <dt class="text-emerald-300">Pagos corretamente</dt>
+                                <dd class="mt-1 text-2xl font-extrabold text-white">${historico.pagosCorretamente}</dd>
+                            </div>
+                            <div class="rounded-lg border ${historico.emAberto || historico.pagosComAtraso ? 'border-amber-500/30 bg-amber-500/10' : 'border-zinc-800 bg-[#121212]'} p-3">
+                                <dt class="${historico.emAberto || historico.pagosComAtraso ? 'text-amber-300' : 'text-zinc-500'}">Pendências/atrasos</dt>
+                                <dd class="mt-1 text-2xl font-extrabold text-white">${historico.emAberto + historico.pagosComAtraso}</dd>
+                            </div>
+                        </dl>
+                    </section>
+
+                    <div class="mt-6 grid gap-6 lg:grid-cols-2 lg:gap-8">
+                        <section>
+                            <h3 class="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-emerald-400">
+                                <i data-lucide="user" class="w-4 h-4"></i>
+                                Solicitante
+                            </h3>
+                            <dl class="grid gap-3 text-sm">
+                                <div class="flex justify-between gap-4"><dt class="text-zinc-500">Nome</dt><dd class="text-right text-zinc-200">${texto(item.solicitante?.nome)}</dd></div>
+                                <div class="flex justify-between gap-4"><dt class="text-zinc-500">CPF</dt><dd class="text-right text-zinc-200">${texto(item.solicitante?.cpf)}</dd></div>
+                                <div class="flex justify-between gap-4"><dt class="text-zinc-500">Telefone</dt><dd class="text-right text-zinc-200">${texto(item.solicitante?.telefone)}</dd></div>
+                                <div class="flex justify-between gap-4"><dt class="text-zinc-500">Valor</dt><dd class="text-right font-semibold text-white">${texto(item.solicitante?.valor)}</dd></div>
+                                <div class="flex justify-between gap-4"><dt class="text-zinc-500">Chave PIX</dt><dd class="text-right text-zinc-200 break-all">${texto(item.solicitante?.pix)}</dd></div>
+                                <div class="flex justify-between gap-4"><dt class="text-zinc-500">Data de vencimento</dt><dd class="text-right text-zinc-200">${texto(formatarDataCurta(item.solicitante?.dataPagamento))}</dd></div>
+                            </dl>
+                        </section>
+
+                        <section class="lg:border-l lg:border-zinc-800 lg:pl-8">
+                            <h3 class="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-emerald-400">
+                                <i data-lucide="users" class="w-4 h-4"></i>
+                                Contato de Confiança
+                            </h3>
+                            <dl class="grid gap-3 text-sm">
+                                <div class="flex justify-between gap-4"><dt class="text-zinc-500">Nome</dt><dd class="text-right text-zinc-200">${texto(item.contato?.nome)}</dd></div>
+                                <div class="flex justify-between gap-4"><dt class="text-zinc-500">CPF</dt><dd class="text-right text-zinc-200">${texto(item.contato?.cpf)}</dd></div>
+                                <div class="flex justify-between gap-4"><dt class="text-zinc-500">Telefone</dt><dd class="text-right text-zinc-200">${texto(item.contato?.telefone)}</dd></div>
+                                <div class="flex justify-between gap-4"><dt class="text-zinc-500">Relacionamento</dt><dd class="text-right text-zinc-200">${texto(item.contato?.relacionamento)}</dd></div>
+                            </dl>
+                        </section>
+                    </div>
+
+                    <section class="mt-6 border-t border-zinc-800 pt-5">
+                        <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                            <div>
+                                <h3 class="mb-2 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-emerald-400">
+                                    <i data-lucide="receipt" class="w-4 h-4"></i>
+                                    Pagamento do cliente
+                                </h3>
+                                <p class="text-sm ${pagamentoRegistrado ? 'text-emerald-300' : 'text-zinc-500'}">
+                                    ${pagamentoRegistrado ? `Pagamento registrado em ${formatarDataPagamentoRegistrado(item.pagamento?.pagoEm)}` : 'Aguardando registro de pagamento'}
+                                </p>
+                            </div>
+
+                            <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(180px,1fr)_minmax(155px,0.85fr)_auto_auto]">
+                                <label class="grid gap-1">
+                                    <span class="text-xs font-semibold text-zinc-500">Valor pago</span>
+                                    <input type="text" inputmode="decimal" data-payment-value value="${atributo(item.pagamento?.valorPago)}" placeholder="${atributo('Valor atualizado: ' + formatarMoeda(resumoJuros.valorAtualizado))}" class="rounded-lg border border-zinc-800/80 bg-[#0a0a0a] px-3 py-2.5 text-sm text-zinc-200 placeholder-zinc-600 outline-none transition-all focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50">
+                                </label>
+                                <label class="grid gap-1">
+                                    <span class="text-xs font-semibold text-zinc-500">Data do pagamento</span>
+                                    <input type="date" data-payment-date value="${atributo(dataPagamentoInput)}" class="rounded-lg border border-zinc-800/80 bg-[#0a0a0a] px-3 py-2.5 text-sm text-zinc-200 outline-none transition-all focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50">
+                                </label>
+                                <button type="button" data-action="payment" data-id="${atributo(item.id)}" class="inline-flex items-center justify-center gap-2 self-end rounded-lg bg-[#10B981] px-3 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#059669]">
+                                    <i data-lucide="badge-dollar-sign" class="w-4 h-4"></i>
+                                    Marcar pago
+                                </button>
+                                <button type="button" data-action="clear-payment" data-id="${atributo(item.id)}" class="inline-flex items-center justify-center gap-2 self-end rounded-lg border border-zinc-700 px-3 py-2.5 text-sm font-semibold text-zinc-200 transition-colors hover:border-red-500/40 hover:text-white">
+                                    <i data-lucide="x" class="w-4 h-4"></i>
+                                    Limpar
+                                </button>
+                            </div>
+                        </div>
+
+                        <dl class="mt-5 grid gap-3 text-sm md:grid-cols-4">
+                            <div>
+                                <dt class="text-zinc-500">Valor emprestado</dt>
+                                <dd class="mt-1 font-semibold text-white">${formatarMoeda(valorEmprestado)}</dd>
+                            </div>
+                            <div>
+                                <dt class="text-zinc-500">Valor atualizado</dt>
+                                <dd data-payment-updated class="mt-1 font-semibold ${classeValorAtualizado(resumoJuros)}">${formatarMoeda(resumoJuros.valorAtualizado)}</dd>
+                                <dd data-payment-interest-detail class="mt-1 text-xs text-zinc-500">${texto(textoDetalheJuros(resumoJuros))}</dd>
+                            </div>
+                            <div>
+                                <dt class="text-zinc-500">Valor pago</dt>
+                                <dd class="mt-1 font-semibold text-white">${pagamentoRegistrado ? formatarMoeda(valorPago) : 'Nao informado'}</dd>
+                            </div>
+                            <div>
+                                <dt class="text-zinc-500">Ganho nessa solicitação</dt>
+                                <dd class="mt-1 font-semibold ${classeGanho}">${pagamentoRegistrado ? formatarMoeda(ganhoSolicitacao) : 'R$ 0,00'}</dd>
+                            </div>
+                        </dl>
+                    </section>
+                </article>
+            `;
+        }
+
+        function atualizarModalSolicitacaoAberta() {
+            if (!solicitacaoAbertaId || !modalSolicitacaoEl.classList.contains('is-open')) return;
+            const solicitacao = buscarSolicitacao(solicitacaoAbertaId);
+
+            if (!solicitacao) {
+                fecharModalSolicitacao();
+                return;
+            }
+
+            modalSolicitacaoConteudoEl.innerHTML = htmlModalSolicitacao(solicitacao);
+            lucide.createIcons();
+        }
+
+        function abrirDetalhesSolicitacao(id) {
+            const solicitacao = buscarSolicitacao(id);
+            if (!solicitacao) return;
+
+            solicitacaoAbertaId = id;
+            modalSolicitacaoConteudoEl.innerHTML = htmlModalSolicitacao(solicitacao);
+            modalSolicitacaoEl.classList.add('is-open');
+            document.body.classList.add('detail-modal-open');
+            fecharMenusStatus();
+            lucide.createIcons();
+            modalSolicitacaoConteudoEl.querySelector('[data-action="close-modal"]')?.focus();
+        }
+
+        function fecharModalSolicitacao() {
+            modalSolicitacaoEl.classList.remove('is-open');
+            document.body.classList.remove('detail-modal-open');
+            modalSolicitacaoConteudoEl.innerHTML = '';
+            solicitacaoAbertaId = null;
+            fecharMenusStatus();
+        }
+
+        function atualizarStatus(id, status) {
+            const solicitacoes = carregarSolicitacoes().map(item => {
+                if (item.id !== id) return item;
+                return {
+                    ...item,
+                    status,
+                    atualizadoEm: new Date().toISOString()
+                };
+            });
+
+            salvarSolicitacoes(solicitacoes);
+            renderizar();
+            atualizarModalSolicitacaoAberta();
+        }
+
+        function registrarPagamento(id, botao) {
+            const areaPagamento = botao.closest('[data-payment-scope]') || botao.closest('article');
+            const campoPagamento = areaPagamento.querySelector('[data-payment-value]');
+            const campoDataPagamento = areaPagamento.querySelector('[data-payment-date]');
+            const valorPago = campoPagamento.value.trim();
+            const dataPagamento = criarDataPagamentoManual(campoDataPagamento?.value);
+
+            if (!valorPago || numeroMoeda(valorPago) <= 0) {
+                alert('Informe quanto o cliente pagou.');
+                campoPagamento.focus();
+                return;
+            }
+
+            if (!dataPagamento) {
+                alert('Informe a data em que o cliente pagou.');
+                campoDataPagamento?.focus();
+                return;
+            }
+
+            const solicitacoes = carregarSolicitacoes().map(item => {
+                if (item.id !== id) return item;
+                return {
+                    ...item,
+                    pagamento: {
+                        pago: true,
+                        valorPago,
+                        pagoEm: dataPagamento.toISOString()
+                    },
+                    atualizadoEm: new Date().toISOString()
+                };
+            });
+
+            salvarSolicitacoes(solicitacoes);
+            renderizar();
+            atualizarModalSolicitacaoAberta();
+        }
+
+        function limparPagamento(id) {
+            const solicitacoes = carregarSolicitacoes().map(item => {
+                if (item.id !== id) return item;
+                const itemAtualizado = { ...item };
+                delete itemAtualizado.pagamento;
+                itemAtualizado.atualizadoEm = new Date().toISOString();
+                return itemAtualizado;
+            });
+
+            salvarSolicitacoes(solicitacoes);
+            renderizar();
+            atualizarModalSolicitacaoAberta();
+        }
+
+        async function copiarPix(id) {
+            const solicitacao = carregarSolicitacoes().find(item => item.id === id);
+            const pix = solicitacao?.solicitante?.pix || '';
+            if (!pix) return;
+
+            try {
+                await navigator.clipboard.writeText(pix);
+            } catch {
+                const campo = document.createElement('textarea');
+                campo.value = pix;
+                document.body.appendChild(campo);
+                campo.select();
+                document.execCommand('copy');
+                campo.remove();
+            }
+        }
+
+        function removerSolicitacao(id) {
+            if (!confirm('Remover esta solicitação do painel?')) return;
+            const solicitacoes = carregarSolicitacoes().filter(item => item.id !== id);
+            salvarSolicitacoes(solicitacoes);
+            renderizar();
+            if (solicitacaoAbertaId === id) {
+                fecharModalSolicitacao();
+            }
+        }
+
+        function fecharMenusStatus(menuAtivo = null) {
+            document.querySelectorAll('[data-status-menu]').forEach(menu => {
+                if (menu !== menuAtivo) {
+                    menu.classList.add('hidden');
+                }
+            });
+        }
+
+        function alternarMenuStatus(botao) {
+            const menu = botao.parentElement.querySelector('[data-status-menu]');
+            if (!menu) return;
+
+            fecharMenusStatus(menu);
+            menu.classList.toggle('hidden');
+        }
+
+        function alternarDetalhes(botao) {
+            const card = botao.closest('article');
+            const detalhes = card.querySelector('[data-details]');
+            const textoBotao = botao.querySelector('[data-toggle-text]');
+            const icone = botao.querySelector('svg');
+            const id = botao.dataset.id;
+            const estaMinimizado = detalhes.classList.toggle('hidden');
+
+            if (estaMinimizado) {
+                cardsMinimizados.add(id);
+            } else {
+                cardsMinimizados.delete(id);
+            }
+
+            textoBotao.textContent = estaMinimizado ? 'Mostrar dados' : 'Minimizar dados';
+            icone?.classList.toggle('rotate-180', estaMinimizado);
+        }
+
+        listaEl.addEventListener('click', event => {
+            const botao = event.target.closest('button[data-action]');
+            if (!botao) return;
+
+            const id = botao.dataset.id;
+            const action = botao.dataset.action;
+
+            if (action === 'open-details') abrirDetalhesSolicitacao(id);
+            if (action === 'copy-pix') copiarPix(id);
+            if (action === 'toggle-status') alternarMenuStatus(botao);
+            if (action === 'set-status') atualizarStatus(id, botao.dataset.status);
+            if (action === 'payment') registrarPagamento(id, botao);
+            if (action === 'clear-payment') limparPagamento(id);
+            if (action === 'delete') removerSolicitacao(id);
+        });
+
+        listaEl.addEventListener('change', atualizarPreviaJurosPagamento);
+
+        modalSolicitacaoEl.addEventListener('click', event => {
+            if (event.target === modalSolicitacaoEl) {
+                fecharModalSolicitacao();
+                return;
+            }
+
+            const botao = event.target.closest('button[data-action]');
+            if (!botao || !modalSolicitacaoEl.contains(botao)) return;
+
+            const id = botao.dataset.id;
+            const action = botao.dataset.action;
+
+            if (action === 'close-modal') fecharModalSolicitacao();
+            if (action === 'copy-pix') copiarPix(id);
+            if (action === 'toggle-status') alternarMenuStatus(botao);
+            if (action === 'set-status') atualizarStatus(id, botao.dataset.status);
+            if (action === 'payment') registrarPagamento(id, botao);
+            if (action === 'clear-payment') limparPagamento(id);
+            if (action === 'delete') removerSolicitacao(id);
+        });
+
+        modalSolicitacaoEl.addEventListener('change', atualizarPreviaJurosPagamento);
+
+        document.addEventListener('click', event => {
+            if (event.target.closest('[data-status-menu]') || event.target.closest('[data-action="toggle-status"]')) {
+                return;
+            }
+
+            fecharMenusStatus();
+        });
+
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape') {
+                fecharModalSolicitacao();
+            }
+        });
+
+        buscaEl.addEventListener('input', renderizar);
+        filtroStatusEl.addEventListener('change', renderizar);
+        btnSalvarFinanceiroEl.addEventListener('click', () => {
+            salvarFinanceiro();
+            renderizar();
+        });
+        btnEditarCaixaEl.addEventListener('click', editarCaixa);
+        inputCaixaEl.addEventListener('input', formatarCampoCaixa);
+        inputCaixaEl.addEventListener('keydown', event => {
+            if (event.key !== 'Enter') return;
+            salvarFinanceiro();
+            renderizar();
+        });
+        document.getElementById('btn-recarregar').addEventListener('click', () => {
+            renderizar();
+            atualizarModalSolicitacaoAberta();
+        });
+        btnSairEl.addEventListener('click', () => {
+            localStorage.removeItem(AUTH_KEY);
+            window.location.href = 'login.html';
+        });
+
+        window.addEventListener('storage', event => {
+            if (event.key === STORAGE_KEY) {
+                renderizar();
+                atualizarModalSolicitacaoAberta();
+            }
+            if (event.key === FINANCEIRO_KEY) {
+                preencherFinanceiro();
+                renderizar();
+            }
+        });
+
+        preencherFinanceiro();
+        renderizar();
+    </script>
+</body>
+</html>

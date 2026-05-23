@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Microcrédito Inteligente | Bem-vindo</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+      }
+
+      .hero-gradient {
+        background: radial-gradient(
+          circle at top center,
+          rgba(16, 185, 129, 0.15),
+          transparent 50%
+        );
+      }
+
+      .glass-card {
+        background: rgba(18, 18, 18, 0.7);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+
+      .process-card {
+        animation: step-in 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+        animation-delay: var(--delay);
+      }
+
+      .process-icon {
+        animation: icon-pulse 2.4s ease-in-out infinite;
+        animation-delay: var(--delay);
+      }
+
+      .process-line {
+        background-size: 200% 100%;
+        animation: line-flow 2.8s linear infinite;
+      }
+
+      @keyframes step-in {
+        from {
+          opacity: 0;
+          transform: translateY(18px) scale(0.98);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      @keyframes icon-pulse {
+        0%,
+        100% {
+          box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.28);
+        }
+        50% {
+          box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+        }
+      }
+
+      @keyframes line-flow {
+        from {
+          background-position: 0% 50%;
+        }
+        to {
+          background-position: 200% 50%;
+        }
+      }
+    </style>
+  </head>
+  <body
+    class="bg-[#0a0a0a] text-zinc-100 min-h-screen flex flex-col items-center p-6 selection:bg-emerald-500/30"
+  >
+    <div
+      class="fixed top-0 left-0 w-full h-full hero-gradient pointer-events-none z-0"
+    ></div>
+
+    <main class="max-w-5xl w-full text-center relative z-10 pt-16 md:pt-24">
+      <div
+        class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-medium mb-8"
+      >
+        <i data-lucide="sparkles" class="w-4 h-4"></i>
+        Crédito rápido e sem burocracia
+      </div>
+
+      <h1
+        class="text-4xl md:text-6xl font-extrabold tracking-tight text-white mb-6"
+      >
+        Microcrédito <span class="text-emerald-500">Inteligente</span>
+      </h1>
+
+      <p
+        class="text-lg md:text-xl text-zinc-400 mb-12 max-w-2xl mx-auto leading-relaxed"
+      >
+        Soluções financeiras simples para impulsionar seus projetos. Solicite
+        agora e receba uma resposta em tempo recorde.
+      </p>
+
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <a
+          href="solicitacao.html"
+          class="group relative inline-flex items-center justify-center px-8 py-4 font-bold text-white transition-all duration-200 bg-emerald-600 font-pj rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600 hover:bg-emerald-500 w-full sm:w-auto"
+        >
+          Solicitar Crédito Agora
+          <i
+            data-lucide="arrow-right"
+            class="ml-2 w-5 h-5 transition-transform group-hover:translate-x-1"
+          ></i>
+        </a>
+      </div>
+
+      <section class="mt-20 text-left" aria-label="Como funciona">
+        <div class="text-center max-w-2xl mx-auto mb-10">
+          <span
+            class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-zinc-300 text-xs font-semibold uppercase tracking-[0.2em]"
+          >
+            <i data-lucide="route" class="w-4 h-4 text-emerald-400"></i>
+            Como funciona
+          </span>
+        </div>
+
+        <div class="relative">
+          <div
+            class="hidden md:block absolute left-12 right-12 top-16 h-1 rounded-full bg-zinc-800 overflow-hidden"
+          >
+            <div
+              class="process-line h-full w-full bg-gradient-to-r from-emerald-500 via-cyan-400 to-emerald-500"
+            ></div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-5">
+            <article
+              class="process-card glass-card relative p-5 rounded-2xl"
+              style="--delay: 0ms"
+            >
+              <div
+                class="process-icon w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-5"
+              >
+                <i data-lucide="clipboard-pen-line" class="w-6 h-6"></i>
+              </div>
+              <p class="text-xs font-bold text-emerald-400 mb-2">Etapa 01</p>
+              <h3 class="text-lg font-bold text-white mb-2">
+                Dados do solicitante
+              </h3>
+              <p class="text-sm text-zinc-500 leading-relaxed">
+                Você preenche as informações pessoais e os dados necessários
+                para iniciar a análise.
+              </p>
+            </article>
+
+            <article
+              class="process-card glass-card relative p-5 rounded-2xl"
+              style="--delay: 140ms"
+            >
+              <div
+                class="process-icon w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-300 mb-5"
+              >
+                <i data-lucide="contact-round" class="w-6 h-6"></i>
+              </div>
+              <p class="text-xs font-bold text-cyan-300 mb-2">Etapa 02</p>
+              <h3 class="text-lg font-bold text-white mb-2">
+                Contato de confiança
+              </h3>
+              <p class="text-sm text-zinc-500 leading-relaxed">
+                Em seguida, você preenche os dados do contato de confiança que
+                fará parte da solicitação.
+              </p>
+            </article>
+
+            <article
+              class="process-card glass-card relative p-5 rounded-2xl"
+              style="--delay: 280ms"
+            >
+              <div
+                class="process-icon w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-300 mb-5"
+              >
+                <i data-lucide="triangle-alert" class="w-6 h-6"></i>
+              </div>
+              <p class="text-xs font-bold text-amber-300 mb-2">Etapa 03</p>
+              <h3 class="text-lg font-bold text-white mb-2">
+                Atenção ao compromisso
+              </h3>
+              <p class="text-sm text-zinc-500 leading-relaxed">
+                Caso a parcela não seja paga ou ocorram atrasos, o contato de
+                confiança não poderá solicitar um empréstimo no futuro.
+              </p>
+            </article>
+
+            <article
+              class="process-card glass-card relative p-5 rounded-2xl"
+              style="--delay: 420ms"
+            >
+              <div
+                class="process-icon w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-5"
+              >
+                <i data-lucide="timer" class="w-6 h-6"></i>
+              </div>
+              <p class="text-xs font-bold text-emerald-400 mb-2">Etapa 04</p>
+              <h3 class="text-lg font-bold text-white mb-2">
+                Crédito liberado
+              </h3>
+              <p class="text-sm text-zinc-500 leading-relaxed">
+                Após a aprovação, disponibilizamos o empréstimo em até 20
+                minutos.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <div class="mt-24 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="glass-card p-6 rounded-2xl text-left">
+          <div
+            class="w-10 h-10 bg-emerald-500/10 rounded-lg flex items-center justify-center text-emerald-500 mb-4"
+          >
+            <i data-lucide="zap" class="w-6 h-6"></i>
+          </div>
+          <h3 class="text-lg font-bold mb-2">Rápido</h3>
+          <p class="text-sm text-zinc-500">
+            Processo simplificado e resposta ágil para suas necessidades.
+          </p>
+        </div>
+
+        <div class="glass-card p-6 rounded-2xl text-left">
+          <div
+            class="w-10 h-10 bg-emerald-500/10 rounded-lg flex items-center justify-center text-emerald-500 mb-4"
+          >
+            <i data-lucide="shield-check" class="w-6 h-6"></i>
+          </div>
+          <h3 class="text-lg font-bold mb-2">Seguro</h3>
+          <p class="text-sm text-zinc-500">
+            Seus dados protegidos e transparência em todas as etapas.
+          </p>
+        </div>
+
+        <div class="glass-card p-6 rounded-2xl text-left">
+          <div
+            class="w-10 h-10 bg-emerald-500/10 rounded-lg flex items-center justify-center text-emerald-500 mb-4"
+          >
+            <i data-lucide="users" class="w-6 h-6"></i>
+          </div>
+          <h3 class="text-lg font-bold mb-2">Acessível</h3>
+          <p class="text-sm text-zinc-500">
+            Feito para pequenos empreendedores e pessoas físicas.
+          </p>
+        </div>
+      </div>
+    </main>
+
+    <footer class="mt-auto py-8 text-zinc-600 text-sm relative z-10">
+      &copy; 2024 Microcrédito Inteligente. Todos os direitos reservados.
+    </footer>
+
+    <script>
+      lucide.createIcons();
+    </script>
+  </body>
+</html>

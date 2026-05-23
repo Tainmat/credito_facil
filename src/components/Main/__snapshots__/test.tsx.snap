@@ -1,0 +1,28 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`<Main /> should render the heading 1`] = `
+<main
+  class="bg-[#06092b] text-white w-full h-full p-12 text-center flex flex-col items-center justify-center"
+>
+  <img
+    alt="Logo da Bilgi"
+    class="w-[25rem] mb-10"
+    src="/img/bilgi-logo.svg"
+  />
+  <h2
+    class="text-[2rem] font-light"
+  >
+    Serviços inteligentes
+  </h2>
+  <h2
+    class="text-[4rem] font-bold"
+  >
+    A solução certa para a sua empresa
+  </h2>
+  <img
+    alt="Um homem e uma mulher analizando gráficos"
+    class="mt-12 w-[min(30rem,100%)]"
+    src="/img/planejamento-img.svg"
+  />
+</main>
+`;

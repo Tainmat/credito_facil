@@ -1,0 +1,201 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Inter', sans-serif;
+}
+
+/* ─── Login page ──────────────────────────────────────────── */
+.auth-glow {
+  background:
+    radial-gradient(circle at top left, rgba(16, 185, 129, 0.16), transparent 36%),
+    radial-gradient(circle at bottom right, rgba(6, 182, 212, 0.1), transparent 32%),
+    #0a0a0a;
+}
+
+.auth-card {
+  background: rgba(18, 18, 18, 0.82);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(63, 63, 70, 0.8);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.42);
+}
+
+.field {
+  background: rgba(10, 10, 10, 0.78);
+  border: 1px solid rgba(63, 63, 70, 0.9);
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.field:focus {
+  border-color: rgba(16, 185, 129, 0.72);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.14);
+  outline: none;
+}
+
+/* ─── Home / landing ──────────────────────────────────────── */
+.hero-gradient {
+  background: radial-gradient(
+    circle at top center,
+    rgba(16, 185, 129, 0.15),
+    transparent 50%
+  );
+}
+
+.glass-card {
+  background: rgba(18, 18, 18, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.process-card {
+  animation: step-in 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--delay);
+}
+
+.process-icon {
+  animation: icon-pulse 2.4s ease-in-out infinite;
+  animation-delay: var(--delay);
+}
+
+.process-line {
+  background-size: 200% 100%;
+  animation: line-flow 2.8s linear infinite;
+}
+
+@keyframes step-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes icon-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.28);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+  }
+}
+
+@keyframes line-flow {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 200% 50%;
+  }
+}
+
+/* ─── Calendar ────────────────────────────────────────────── */
+.calendar-day {
+  aspect-ratio: 1;
+  align-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0.75rem;
+  color: #d4d4d8;
+  display: flex;
+  font-size: 0.875rem;
+  font-weight: 600;
+  justify-content: center;
+  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease,
+    transform 180ms ease;
+}
+
+.calendar-day:hover:not(:disabled) {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.calendar-day:focus-visible,
+.calendar-nav-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.45);
+}
+
+.calendar-day.is-muted {
+  color: #52525b;
+}
+
+.calendar-day.is-today {
+  border-color: rgba(16, 185, 129, 0.45);
+  color: #6ee7b7;
+}
+
+.calendar-day.is-selected {
+  background: #10b981;
+  border-color: #10b981;
+  color: #ffffff;
+  box-shadow: 0 10px 22px rgba(16, 185, 129, 0.22);
+}
+
+.calendar-day:disabled {
+  color: #3f3f46;
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.calendar-nav-button {
+  align-items: center;
+  background: #0a0a0a;
+  border: 1px solid rgba(63, 63, 70, 0.8);
+  border-radius: 0.75rem;
+  color: #d4d4d8;
+  display: inline-flex;
+  height: 2.5rem;
+  justify-content: center;
+  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+  width: 2.5rem;
+}
+
+.calendar-nav-button:hover:not(:disabled) {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #ffffff;
+}
+
+.calendar-nav-button:disabled {
+  color: #3f3f46;
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* ─── Admin panel ─────────────────────────────────────────── */
+.solicitacoes-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+.solicitacao-card {
+  aspect-ratio: 1 / 1;
+  background:
+    radial-gradient(circle at top right, rgba(16, 185, 129, 0.08), transparent 42%),
+    #121212;
+  border: 1px solid rgba(39, 39, 42, 0.8);
+  border-radius: 1rem;
+  min-height: 190px;
+  padding: 1rem;
+  text-align: left;
+  transition: border-color 180ms ease, transform 180ms ease, background-color 180ms ease;
+  width: 100%;
+}
+
+.solicitacao-card:hover {
+  border-color: rgba(16, 185, 129, 0.45);
+  transform: translateY(-2px);
+}
+
+.solicitacao-card:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.45);
+}
