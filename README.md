@@ -38,30 +38,15 @@ Siga o passo a passo a seguir para rodar toda a infraestrutura local (Banco de D
 
 ### Passo 1: Inicializar e Subir o Supabase Local (Docker)
 
-O banco de dados PostgreSQL e os serviços de Autenticação/Realtime rodam localmente via Docker através do Supabase CLI.
+O banco de dados PostgreSQL, a autenticação e o realtime rodam localmente via Docker. Graças às **migrações automáticas** configuradas na pasta `supabase/migrations/`, todas as tabelas, políticas de segurança RLS e a replicação de tempo real (Realtime) são provisionadas de forma 100% automática ao iniciar o banco!
 
 1.  Certifique-se de que o Docker Desktop está aberto.
 2.  No terminal do projeto, inicialize a infraestrutura do Supabase:
     ```bash
     npx supabase start
     ```
-3.  Quando a inicialização terminar, o terminal exibirá as portas e chaves do seu projeto local. A URL do painel administrativo do Supabase (Studio) estará rodando em:
+3.  Pronto! Todo o esquema do banco foi criado de forma automática. A URL do painel administrativo do Supabase (Studio) estará rodando em:
     *   **Supabase Studio:** [http://127.0.0.1:54323](http://127.0.0.1:54323)
-
----
-
-### Passo 2: Configurar o Realtime no Banco (SQL Editor)
-
-Para que o painel de administração atualize os dados em tempo real via WebSockets:
-
-1.  Abra o **Supabase Studio** local ([http://127.0.0.1:54323](http://127.0.0.1:54323)) no seu navegador.
-2.  Acesse a aba **SQL Editor** no menu lateral esquerdo.
-3.  Crie uma nova query, cole o código a seguir e clique em **Run**:
-    ```sql
-    -- Habilitar o envio de eventos Realtime para as tabelas do Crédito Fácil
-    alter publication supabase_realtime add table solicitacoes;
-    alter publication supabase_realtime add table transacoes_caixa;
-    ```
 
 ---
 

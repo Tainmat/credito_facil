@@ -1,7 +1,0 @@
-{
-  "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"rtk npm run build 2>&1\",\"timeout\":120000,\"description\":\"Run production build to check for errors\"}",
-  "error": "Exit code 1\n> next build\n   ▲ Next.js 14.0.4\n   Creating an optimized production build ...\n ✓ Compiled successfully\n   Linting and checking validity of types ...\nFailed to compile.\n./src/app/painel-admin/page.tsx\n46:32  Error: '_obterHist' is defined but never used.  @typescript-eslint/no-unused-vars\n./src/components/Main/index.tsx\n6:5  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may i...",
-  "timestamp": "2026-05-23T18:10:39.771Z",
-  "retry_count": 1
-}

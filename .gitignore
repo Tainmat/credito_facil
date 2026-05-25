@@ -41,3 +41,5 @@ database
 # storybook
 storybook-static
 
+.omc/
+
