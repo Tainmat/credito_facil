@@ -324,7 +324,7 @@ export default function SolicitacaoPage() {
                     <DollarSign className="absolute left-4 top-4 text-zinc-500 w-5 h-5" />
                     <input
                       type="text"
-                      placeholder="Valor desejado (R$ 200 - R$ 500)"
+                      placeholder="Valor desejado (R$ 80 - R$ 180)"
                       value={valor}
                       onChange={(e) => setValor(e.target.value)}
                       className={inputCls}
