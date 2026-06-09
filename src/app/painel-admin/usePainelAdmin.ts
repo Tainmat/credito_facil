@@ -286,6 +286,7 @@ export function mapearSolicitacao(db: DbSolicitacao): Solicitacao {
     status: db.status,
     criadaEm: db.created_at,
     atualizadoEm: db.updated_at,
+    tipo: db.tipo_solicitacao ?? 'credito',
     solicitante: {
       nome: db.solicitante_nome ?? undefined,
       cpf: db.solicitante_cpf ?? undefined,
@@ -299,6 +300,12 @@ export function mapearSolicitacao(db: DbSolicitacao): Solicitacao {
       cpf: db.contato_cpf ?? undefined,
       telefone: db.contato_telefone ?? undefined,
       relacionamento: db.contato_relacionamento ?? undefined
+    },
+    boleto: {
+      nome: db.boleto_nome ?? undefined,
+      tipo: db.boleto_tipo ?? undefined,
+      tamanho: db.boleto_tamanho ?? undefined,
+      caminho: db.boleto_storage_path ?? undefined
     },
     pagamento: {
       pago: db.pagamento_pago ?? false,
@@ -657,6 +664,8 @@ export function usePainelAdmin() {
         s.solicitante?.cpf,
         s.solicitante?.telefone,
         s.solicitante?.pix,
+        s.tipo,
+        s.boleto?.nome,
         s.contato?.nome,
         s.contato?.cpf,
         s.contato?.telefone

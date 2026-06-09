@@ -1,3 +1,4 @@
+import { CreditCard, ReceiptText } from 'lucide-react'
 import {
   normalizarStatus,
   calcularValorAtualizado,
@@ -18,6 +19,7 @@ interface SolicitacaoCardProps {
 export function SolicitacaoCard({ item, onClick }: SolicitacaoCardProps) {
   const status = normalizarStatus(item.status)
   const resumo = calcularValorAtualizado(item)
+  const isBoleto = item.tipo === 'boleto'
 
   return (
     <button
@@ -26,13 +28,21 @@ export function SolicitacaoCard({ item, onClick }: SolicitacaoCardProps) {
       onClick={onClick}
     >
       <div>
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between gap-2 mb-2">
           <span
             className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold ${classeStatus(
               status
             )}`}
           >
             {status}
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[10px] font-semibold text-zinc-400">
+            {isBoleto ? (
+              <ReceiptText className="h-3 w-3" />
+            ) : (
+              <CreditCard className="h-3 w-3" />
+            )}
+            {isBoleto ? 'Boleto' : 'Credito'}
           </span>
         </div>
         <p className="text-sm font-bold text-white truncate">
@@ -43,7 +53,7 @@ export function SolicitacaoCard({ item, onClick }: SolicitacaoCardProps) {
 
       <div className="mt-auto pt-2 space-y-1">
         <p className="text-xs text-zinc-500">
-          Valor:{' '}
+          {isBoleto ? 'Boleto' : 'Valor'}:{' '}
           <span className="text-zinc-300 font-semibold">
             {item.solicitante?.valor
               ? formatarMoeda(numeroMoeda(item.solicitante.valor))

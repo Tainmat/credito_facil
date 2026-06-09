@@ -3,11 +3,15 @@
 import { useState } from 'react'
 import {
   CreditCard,
+  ReceiptText,
   User,
   FileText,
   Smartphone,
   DollarSign,
   Zap,
+  Upload,
+  FileCheck2,
+  Trash2,
   CalendarDays,
   ChevronDown,
   ChevronLeft,
@@ -22,7 +26,7 @@ import {
 } from 'lucide-react'
 import {
   useSolicitacao,
-  flowSteps,
+  BOLETO_ACCEPT,
   maskCPF,
   maskPhone,
   formatDisplayDate,
@@ -230,6 +234,8 @@ export default function SolicitacaoPage() {
   const {
     step,
     setStep,
+    tipoSolicitacao,
+    handleAlterarTipoSolicitacao,
     nome,
     setNome,
     cpf,
@@ -244,6 +250,10 @@ export default function SolicitacaoPage() {
     setDataPagamento,
     calendarOpen,
     setCalendarOpen,
+    boletoArquivo,
+    boletoErro,
+    handleSelecionarBoleto,
+    handleRemoverBoleto,
     contatoNome,
     setContatoNome,
     contatoCpf,
@@ -252,6 +262,7 @@ export default function SolicitacaoPage() {
     setContatoTelefone,
     contatoRelacionamento,
     setContatoRelacionamento,
+    operationFlowSteps,
     visibleSteps,
     minDate,
     maxDate,
@@ -259,6 +270,18 @@ export default function SolicitacaoPage() {
     handleFinalizarSolicitacao,
     handleReset
   } = useSolicitacao()
+  const isBoleto = tipoSolicitacao === 'boleto'
+  const tituloSolicitacao = isBoleto
+    ? 'Pagamento de Boleto'
+    : 'Solicitação de Crédito'
+  const valorPlaceholder = isBoleto
+    ? 'Valor do boleto'
+    : 'Valor desejado (R$ 80 - R$ 180)'
+  const pixPlaceholder = isBoleto ? 'Chave PIX para retorno' : 'Chave PIX'
+  const dataLabel = isBoleto
+    ? 'Vencimento do boleto (prazo maximo de 28 dias)'
+    : 'Data de pagamento (prazo maximo de 28 dias)'
+  const dataPlaceholder = isBoleto ? 'Escolha o vencimento' : 'Escolha uma data'
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-zinc-100 p-4 md:p-8 selection:bg-emerald-500/30">
@@ -282,9 +305,43 @@ export default function SolicitacaoPage() {
             {step === 'solicitante' && (
               <div>
                 <h2 className="text-xl font-bold mb-6 flex items-center gap-3">
-                  <CreditCard className="text-emerald-400 w-6 h-6" />
-                  Solicitação de Crédito
+                  {isBoleto ? (
+                    <ReceiptText className="text-emerald-400 w-6 h-6" />
+                  ) : (
+                    <CreditCard className="text-emerald-400 w-6 h-6" />
+                  )}
+                  {tituloSolicitacao}
                 </h2>
+
+                <div className="mb-6">
+                  <label className="block text-xs font-semibold text-zinc-500 mb-2 ml-1">
+                    TIPO DE SOLICITAÇÃO
+                  </label>
+                  <div className="relative">
+                    <div className="absolute left-4 top-4 text-zinc-500 w-5 h-5 pointer-events-none flex items-center justify-center">
+                      {isBoleto ? (
+                        <ReceiptText className="w-5 h-5" />
+                      ) : (
+                        <CreditCard className="w-5 h-5" />
+                      )}
+                    </div>
+                    <select
+                      value={tipoSolicitacao}
+                      onChange={(e) =>
+                        handleAlterarTipoSolicitacao(
+                          e.target.value as 'credito' | 'boleto'
+                        )
+                      }
+                      className={`${inputCls} appearance-none cursor-pointer`}
+                      style={{ WebkitAppearance: 'none' }}
+                    >
+                      <option value="credito">Solicitar Crédito</option>
+                      <option value="boleto">Pagamento de Boleto</option>
+                    </select>
+                    <ChevronDown className="absolute right-4 top-4 text-zinc-500 w-5 h-5 pointer-events-none" />
+                  </div>
+                </div>
+
                 <div className="space-y-4">
                   <div className="relative">
                     <User className="absolute left-4 top-4 text-zinc-500 w-5 h-5" />
@@ -324,7 +381,7 @@ export default function SolicitacaoPage() {
                     <DollarSign className="absolute left-4 top-4 text-zinc-500 w-5 h-5" />
                     <input
                       type="text"
-                      placeholder="Valor desejado (R$ 80 - R$ 180)"
+                      placeholder={valorPlaceholder}
                       value={valor}
                       onChange={(e) => setValor(e.target.value)}
                       className={inputCls}
@@ -334,7 +391,7 @@ export default function SolicitacaoPage() {
                     <Zap className="absolute left-4 top-4 text-zinc-500 w-5 h-5" />
                     <input
                       type="text"
-                      placeholder="Chave PIX"
+                      placeholder={pixPlaceholder}
                       value={pix}
                       onChange={(e) => setPix(e.target.value)}
                       className={inputCls}
@@ -342,7 +399,7 @@ export default function SolicitacaoPage() {
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-zinc-500 mb-2 ml-1">
-                      Data de pagamento (prazo máximo de 28 dias)
+                      {dataLabel}
                     </label>
                     <button
                       type="button"
@@ -358,11 +415,76 @@ export default function SolicitacaoPage() {
                       >
                         {dataPagamento
                           ? formatDisplayDate(dataPagamento)
-                          : 'Escolha uma data'}
+                          : dataPlaceholder}
                       </span>
                       <ChevronDown className="absolute right-4 top-4 text-zinc-500 w-5 h-5 pointer-events-none" />
                     </button>
                   </div>
+                  {isBoleto && (
+                    <div>
+                      <label className="block text-xs font-medium text-zinc-500 mb-2 ml-1">
+                        Boleto para analise (PDF, JPG ou PNG)
+                      </label>
+                      <div className="rounded-xl bg-[#0a0a0a] border border-zinc-800/80 p-4">
+                        <input
+                          id="boleto-upload"
+                          type="file"
+                          accept={BOLETO_ACCEPT}
+                          className="sr-only"
+                          onChange={(e) => {
+                            handleSelecionarBoleto(
+                              e.currentTarget.files?.[0] ?? null
+                            )
+                            e.currentTarget.value = ''
+                          }}
+                        />
+
+                        {boletoArquivo ? (
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0 flex items-center gap-3">
+                              <FileCheck2 className="w-5 h-5 flex-shrink-0 text-emerald-400" />
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-semibold text-zinc-100">
+                                  {boletoArquivo.name}
+                                </p>
+                                <p className="text-xs text-zinc-600">
+                                  {(boletoArquivo.size / 1024 / 1024).toFixed(
+                                    2
+                                  )}{' '}
+                                  MB
+                                </p>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleRemoverBoleto}
+                              className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-red-500/25 bg-red-500/10 text-red-300 hover:bg-red-500/20 transition-colors"
+                              aria-label="Remover boleto"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <label
+                            htmlFor="boleto-upload"
+                            className="flex min-h-[82px] cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-zinc-700 px-4 py-3 text-center text-sm font-semibold text-zinc-400 hover:border-emerald-500/50 hover:text-emerald-300 transition-colors"
+                          >
+                            <Upload className="mb-2 h-5 w-5" />
+                            Selecionar boleto
+                            <span className="mt-1 text-xs font-normal text-zinc-600">
+                              Tamanho maximo de 5 MB
+                            </span>
+                          </label>
+                        )}
+
+                        {boletoErro && (
+                          <p className="mt-2 text-xs font-medium text-red-300">
+                            {boletoErro}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
                   <button
                     type="button"
                     disabled={!isStep1Valid}
@@ -393,8 +515,8 @@ export default function SolicitacaoPage() {
                   Dados do Contato de Confiança
                 </h2>
                 <p className="text-zinc-400 text-sm mb-6">
-                  Para validar seu crédito, informe os dados de uma pessoa de
-                  confiança que servirá como sua referência social.
+                  Para analisar sua solicitacao, informe os dados de uma pessoa
+                  de confianca que servira como sua referencia social.
                 </p>
                 <div className="space-y-4">
                   <div className="relative">
@@ -460,9 +582,8 @@ export default function SolicitacaoPage() {
                   </button>
                 </div>
                 <p className="mt-4 text-xs leading-relaxed text-zinc-500">
-                  Essa pessoa é um apoio para seu dinheiro, caso haja
-                  inadimplência, o seu contato não conseguirá um possível
-                  empréstimo com nosso time.
+                  Essa pessoa ajuda na validacao da sua solicitacao e podera ser
+                  considerada na analise do nosso time.
                 </p>
               </div>
             )}
@@ -477,8 +598,9 @@ export default function SolicitacaoPage() {
                   Obrigado pela solicitação
                 </h2>
                 <p className="text-zinc-400 leading-relaxed max-w-md mb-8">
-                  Nossa equipe já recebeu sua solicitação e irá analisar as
-                  informações. Dentro de 30 minutos vamos dar um retorno.
+                  {isBoleto
+                    ? 'Nossa equipe ja recebeu seus dados e o boleto para analisar a possibilidade de pagamento. Dentro de 30 minutos vamos dar um retorno.'
+                    : 'Nossa equipe ja recebeu sua solicitacao e ira analisar as informacoes. Dentro de 30 minutos vamos dar um retorno.'}
                 </p>
                 <button
                   type="button"
@@ -498,7 +620,7 @@ export default function SolicitacaoPage() {
               Fluxo da Operação
             </h2>
             <div className="relative border-l border-zinc-800/80 ml-5 space-y-8 pb-4">
-              {flowSteps.map(({ icon: Icon, title, desc }, i) => (
+              {operationFlowSteps.map(({ icon: Icon, title, desc }, i) => (
                 <div
                   key={i}
                   className={`relative pl-8 group ${

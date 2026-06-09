@@ -1,14 +1,17 @@
 import { useState, useEffect } from 'react'
 import {
   DollarSign,
+  ReceiptText,
   ShieldCheck,
   User,
   Target,
   CheckCircle2,
-  Zap
+  Zap,
+  FileCheck2
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useCriarSolicitacaoMutation } from '../../hooks/services/mutations/useCriarSolicitacaoMutation'
+import type { TipoSolicitacao } from '../../api/solicitacoes'
 
 function numeroMoeda(v: string): number {
   if (!v) return 0
@@ -24,6 +27,14 @@ function numeroMoeda(v: string): number {
 
 // ─── Constants ─────────────────────────────────────────────
 export const STORAGE_KEY = 'microcredito_solicitacoes'
+export const MAX_BOLETO_BYTES = 5 * 1024 * 1024
+export const BOLETO_ACCEPT = 'application/pdf,image/jpeg,image/png'
+
+const BOLETO_MIME_TYPES = new Set([
+  'application/pdf',
+  'image/jpeg',
+  'image/png'
+])
 
 // ─── Types ─────────────────────────────────────────────────
 export type Step = 'solicitante' | 'fiador' | 'agradecimento'
@@ -84,7 +95,7 @@ export function maskPhone(v: string) {
 }
 
 // ─── Flow steps data ───────────────────────────────────────
-export const flowSteps: FlowStep[] = [
+export const creditoFlowSteps: FlowStep[] = [
   {
     icon: DollarSign,
     title: '1. Solicitação',
@@ -114,8 +125,45 @@ export const flowSteps: FlowStep[] = [
 ]
 
 // ─── Hook ──────────────────────────────────────────────────
+export const boletoFlowSteps: FlowStep[] = [
+  {
+    icon: ReceiptText,
+    title: '1. Solicitacao',
+    desc: 'Voce solicita o pagamento do boleto.'
+  },
+  {
+    icon: FileCheck2,
+    title: '2. Anexo',
+    desc: 'Voce envia o boleto para conferencia.'
+  },
+  {
+    icon: User,
+    title: '3. Referencia Social',
+    desc: 'Voce nos informa uma referencia de seguranca.'
+  },
+  {
+    icon: Target,
+    title: '4. Analise',
+    desc: 'Realizamos a analise dos dados e do boleto.'
+  },
+  {
+    icon: CheckCircle2,
+    title: '5. Aprovacao',
+    desc: 'Definimos se o pagamento pode ser aprovado.'
+  },
+  {
+    icon: Zap,
+    title: '6. Pagamento',
+    desc: 'O boleto e pago apos aprovacao.'
+  }
+]
+
+export const flowSteps = creditoFlowSteps
+
 export function useSolicitacao() {
   const [step, setStep] = useState<Step>('solicitante')
+  const [tipoSolicitacao, setTipoSolicitacao] =
+    useState<TipoSolicitacao>('credito')
   const criarSolicitacao = useCriarSolicitacaoMutation()
 
   // Solicitante
@@ -126,6 +174,8 @@ export function useSolicitacao() {
   const [pix, setPix] = useState('')
   const [dataPagamento, setDataPagamento] = useState<Date | null>(null)
   const [calendarOpen, setCalendarOpen] = useState(false)
+  const [boletoArquivo, setBoletoArquivo] = useState<File | null>(null)
+  const [boletoErro, setBoletoErro] = useState('')
 
   // Fiador
   const [contatoNome, setContatoNome] = useState('')
@@ -141,24 +191,35 @@ export function useSolicitacao() {
   const maxDate = addDays(minDate, 28)
 
   // Computed
+  const isBoleto = tipoSolicitacao === 'boleto'
+  const operationFlowSteps = isBoleto ? boletoFlowSteps : creditoFlowSteps
   const isStep1Valid =
     nome.trim() !== '' &&
     cpf.trim() !== '' &&
     telefone.trim() !== '' &&
     valor.trim() !== '' &&
     pix.trim() !== '' &&
-    dataPagamento !== null
+    dataPagamento !== null &&
+    (!isBoleto || boletoArquivo !== null)
 
-  // Flow animation on mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const tipo = new URLSearchParams(window.location.search).get('tipo')
+    if (tipo === 'boleto') setTipoSolicitacao('boleto')
+  }, [])
+
+  // Flow animation on mount and operation change
   useEffect(() => {
     let count = 0
+    setVisibleSteps(0)
     const timer = setInterval(() => {
       count++
       setVisibleSteps(count)
-      if (count >= flowSteps.length) clearInterval(timer)
+      if (count >= operationFlowSteps.length) clearInterval(timer)
     }, 700)
     return () => clearInterval(timer)
-  }, [])
+  }, [operationFlowSteps.length, tipoSolicitacao])
 
   // Close calendar on Escape
   useEffect(() => {
@@ -169,16 +230,50 @@ export function useSolicitacao() {
     return () => document.removeEventListener('keydown', onKey)
   }, [])
 
+  function handleAlterarTipoSolicitacao(tipo: TipoSolicitacao) {
+    setTipoSolicitacao(tipo)
+    if (tipo === 'credito') {
+      setBoletoArquivo(null)
+      setBoletoErro('')
+    }
+  }
+
+  function handleSelecionarBoleto(arquivo: File | null) {
+    if (!arquivo) return
+
+    if (!BOLETO_MIME_TYPES.has(arquivo.type)) {
+      setBoletoArquivo(null)
+      setBoletoErro('Envie um boleto em PDF, JPG ou PNG.')
+      return
+    }
+
+    if (arquivo.size > MAX_BOLETO_BYTES) {
+      setBoletoArquivo(null)
+      setBoletoErro('O arquivo deve ter no maximo 5 MB.')
+      return
+    }
+
+    setBoletoArquivo(arquivo)
+    setBoletoErro('')
+  }
+
+  function handleRemoverBoleto() {
+    setBoletoArquivo(null)
+    setBoletoErro('')
+  }
+
   async function handleFinalizarSolicitacao() {
     try {
       await criarSolicitacao.mutateAsync({
         id: `SOL-${Date.now()}`,
+        tipoSolicitacao,
         nome,
         cpf,
         telefone,
         valor: numeroMoeda(valor),
         pix,
         dataPagamento: dataPagamento ? formatISO(dataPagamento) : null,
+        boletoArquivo,
         contatoNome,
         contatoCpf,
         contatoTelefone,
@@ -194,12 +289,15 @@ export function useSolicitacao() {
   }
 
   function handleReset() {
+    setTipoSolicitacao('credito')
     setNome('')
     setCpf('')
     setTelefone('')
     setValor('')
     setPix('')
     setDataPagamento(null)
+    setBoletoArquivo(null)
+    setBoletoErro('')
     setContatoNome('')
     setContatoCpf('')
     setContatoTelefone('')
@@ -210,6 +308,8 @@ export function useSolicitacao() {
   return {
     step,
     setStep,
+    tipoSolicitacao,
+    handleAlterarTipoSolicitacao,
     nome,
     setNome,
     cpf,
@@ -224,6 +324,10 @@ export function useSolicitacao() {
     setDataPagamento,
     calendarOpen,
     setCalendarOpen,
+    boletoArquivo,
+    boletoErro,
+    handleSelecionarBoleto,
+    handleRemoverBoleto,
     contatoNome,
     setContatoNome,
     contatoCpf,
@@ -232,6 +336,7 @@ export function useSolicitacao() {
     setContatoTelefone,
     contatoRelacionamento,
     setContatoRelacionamento,
+    operationFlowSteps,
     visibleSteps,
     minDate,
     maxDate,

@@ -9,8 +9,13 @@ import {
   User,
   Users,
   Receipt,
-  BadgeDollarSign
+  BadgeDollarSign,
+  ExternalLink,
+  FileCheck2,
+  Loader2
 } from 'lucide-react'
+import { supabase } from '../../../../lib/supabase'
+import { BOLETOS_BUCKET } from '../../../../api/solicitacoes'
 import {
   normalizarStatus,
   classeStatus,
@@ -64,8 +69,10 @@ export function DetailModal({
   const [dataPagoInput, setDataPagoInput] = useState(
     formatarDataInputPagamento(item.pagamento?.pagoEm)
   )
+  const [abrindoBoleto, setAbrindoBoleto] = useState(false)
 
   const status = normalizarStatus(item.status)
+  const isBoleto = item.tipo === 'boleto'
   const resumo = calcularValorAtualizado(item)
   const valorPago = numeroMoeda(item.pagamento?.valorPago)
   const ganho = item.pagamento?.pago ? valorPago - resumo.valorEmprestado : 0
@@ -81,6 +88,27 @@ export function DetailModal({
     const data = criarDataPagamentoManual(dataPagoInput)
     if (!data) return
     onRegistrarPagamento(item.id, valorPagoInput, data)
+  }
+
+  async function handleAbrirBoleto() {
+    if (!item.boleto?.caminho || abrindoBoleto) return
+
+    try {
+      setAbrindoBoleto(true)
+      const { data, error } = await supabase.storage
+        .from(BOLETOS_BUCKET)
+        .createSignedUrl(item.boleto.caminho, 60 * 5)
+
+      if (error) throw error
+      if (data?.signedUrl) {
+        window.open(data.signedUrl, '_blank', 'noopener,noreferrer')
+      }
+    } catch (error) {
+      console.error('Erro ao abrir boleto:', error)
+      alert('Nao foi possivel abrir o boleto anexado.')
+    } finally {
+      setAbrindoBoleto(false)
+    }
   }
 
   return (
@@ -106,6 +134,14 @@ export function DetailModal({
             >
               {status}
             </span>
+            <span className="ml-2 inline-flex items-center gap-1 rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[11px] font-semibold text-zinc-400">
+              {isBoleto ? (
+                <Receipt className="h-3 w-3" />
+              ) : (
+                <BadgeDollarSign className="h-3 w-3" />
+              )}
+              {isBoleto ? 'Boleto' : 'Credito'}
+            </span>
           </div>
           <button
             type="button"
@@ -127,6 +163,22 @@ export function DetailModal({
             >
               <Copy className="w-3.5 h-3.5" />
               Copiar PIX
+            </button>
+          )}
+
+          {item.boleto?.caminho && (
+            <button
+              type="button"
+              onClick={handleAbrirBoleto}
+              disabled={abrindoBoleto}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-500/10 border border-sky-500/25 text-sky-300 text-xs font-semibold hover:bg-sky-500/20 disabled:opacity-60 disabled:cursor-wait transition-colors"
+            >
+              {abrindoBoleto ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <ExternalLink className="w-3.5 h-3.5" />
+              )}
+              Abrir boleto
             </button>
           )}
 
@@ -240,6 +292,12 @@ export function DetailModal({
                 </dd>
               </div>
               <div className="flex justify-between">
+                <dt className="text-zinc-600">Tipo</dt>
+                <dd className="text-zinc-200">
+                  {isBoleto ? 'Boleto' : 'Credito'}
+                </dd>
+              </div>
+              <div className="flex justify-between">
                 <dt className="text-zinc-600">Valor</dt>
                 <dd className="text-zinc-200">
                   {htmlEscape(item.solicitante?.valor) || '—'}
@@ -296,6 +354,44 @@ export function DetailModal({
             </dl>
           </div>
         </div>
+
+        {isBoleto && (
+          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3 mb-4">
+            <div className="flex items-center gap-2 mb-3">
+              <FileCheck2 className="w-4 h-4 text-zinc-500" />
+              <span className="text-xs font-semibold text-zinc-400">
+                Boleto anexado
+              </span>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-zinc-200">
+                  {htmlEscape(item.boleto?.nome) || 'Sem arquivo'}
+                </p>
+                <p className="mt-0.5 text-[11px] text-zinc-600">
+                  {item.boleto?.tamanho
+                    ? `${(item.boleto.tamanho / 1024 / 1024).toFixed(2)} MB`
+                    : 'Tamanho nao informado'}
+                </p>
+              </div>
+              {item.boleto?.caminho && (
+                <button
+                  type="button"
+                  onClick={handleAbrirBoleto}
+                  disabled={abrindoBoleto}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-sky-500/25 bg-sky-500/10 px-3 py-2 text-xs font-semibold text-sky-300 hover:bg-sky-500/20 disabled:cursor-wait disabled:opacity-60 transition-colors"
+                >
+                  {abrindoBoleto ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  )}
+                  Abrir boleto
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Pagamento */}
         <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3 mb-4">
@@ -358,7 +454,9 @@ export function DetailModal({
           </div>
           <dl className="space-y-1 text-[11px]">
             <div className="flex justify-between">
-              <dt className="text-zinc-600">Emprestado</dt>
+              <dt className="text-zinc-600">
+                {isBoleto ? 'Valor do boleto' : 'Emprestado'}
+              </dt>
               <dd className="text-zinc-200 font-semibold">
                 {formatarMoeda(resumo.valorEmprestado)}
               </dd>
