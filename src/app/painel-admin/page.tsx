@@ -30,6 +30,7 @@ import { StatCard } from './components/StatCard'
 import { DetailModal } from './components/DetailModal'
 import { OperacaoCaixaModal } from './components/OperacaoCaixaModal'
 import { HistoricoCaixaModal } from './components/HistoricoCaixaModal'
+import { NovoEmprestimoModal } from './components/NovoEmprestimoModal'
 
 // ─── Page ─────────────────────────────────────────────────
 type FiltroRecebimentos =
@@ -132,12 +133,14 @@ export default function PainelAdminPage() {
     limparPagamento,
     copiarPix,
     removerSolicitacao,
+    criarSolicitacaoManual,
     obterHistoricoSolicitante
   } = usePainelAdmin()
 
   const [modalCaixa, setModalCaixa] = useState<
     'aporte' | 'resgate' | 'historico' | null
   >(null)
+  const [showNovoEmprestimo, setShowNovoEmprestimo] = useState(false)
   const [buscaRecebimentos, setBuscaRecebimentos] = useState('')
   const [filtroRecebimentos, setFiltroRecebimentos] =
     useState<FiltroRecebimentos>('todos')
@@ -248,6 +251,14 @@ export default function PainelAdminPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowNovoEmprestimo(true)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-sm font-bold hover:bg-emerald-500/20 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Novo Empréstimo
+            </button>
             <button
               type="button"
               onClick={recarregar}
@@ -596,6 +607,14 @@ export default function PainelAdminPage() {
         <HistoricoCaixaModal
           onClose={() => setModalCaixa(null)}
           transacoes={transacoesCaixa}
+        />
+      )}
+
+      {/* Modal Novo Empréstimo */}
+      {showNovoEmprestimo && (
+        <NovoEmprestimoModal
+          onClose={() => setShowNovoEmprestimo(false)}
+          onConfirm={criarSolicitacaoManual}
         />
       )}
     </div>

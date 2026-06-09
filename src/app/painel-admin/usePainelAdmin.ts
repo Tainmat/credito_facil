@@ -21,6 +21,7 @@ import { useAtualizarSolicitacaoStatusMutation } from '../../hooks/services/muta
 import { useRegistrarPagamentoMutation } from '../../hooks/services/mutations/useRegistrarPagamentoMutation'
 import { useLimparPagamentoMutation } from '../../hooks/services/mutations/useLimparPagamentoMutation'
 import { useRemoverSolicitacaoMutation } from '../../hooks/services/mutations/useRemoverSolicitacaoMutation'
+import { useCriarSolicitacaoMutation } from '../../hooks/services/mutations/useCriarSolicitacaoMutation'
 
 // Re-exportação de tipos para manter retrocompatibilidade com componentes das páginas
 export type {
@@ -342,6 +343,7 @@ export function usePainelAdmin() {
   const registrarPagamentoMutation = useRegistrarPagamentoMutation()
   const limparPagamentoMutation = useLimparPagamentoMutation()
   const removerSolicitacaoMutation = useRemoverSolicitacaoMutation()
+  const criarSolicitacaoMutation = useCriarSolicitacaoMutation()
 
   // Calculate current caixa balance from the transaction history
   const totalAportes = transacoesCaixa
@@ -591,6 +593,40 @@ export function usePainelAdmin() {
     }
   }
 
+  async function criarSolicitacaoManual(params: {
+    nome: string
+    cpf: string
+    telefone: string
+    valor: string
+    pix: string
+    dataPagamento: string
+    contatoNome: string
+    contatoCpf: string
+    contatoTelefone: string
+    contatoRelacionamento: string
+  }) {
+    try {
+      await criarSolicitacaoMutation.mutateAsync({
+        id: `MAN-${Date.now()}`,
+        tipoSolicitacao: 'credito',
+        nome: params.nome,
+        cpf: params.cpf,
+        telefone: params.telefone,
+        valor: numeroMoeda(params.valor),
+        pix: params.pix,
+        dataPagamento: params.dataPagamento,
+        contatoNome: params.contatoNome,
+        contatoCpf: params.contatoCpf,
+        contatoTelefone: params.contatoTelefone,
+        contatoRelacionamento: params.contatoRelacionamento
+      })
+      return true
+    } catch (err) {
+      console.error('Erro ao criar solicitação manual:', err)
+      return false
+    }
+  }
+
   function alternarCard(id: string) {
     const set = cardsMinimizadosRef.current
     if (set.has(id)) {
@@ -744,6 +780,7 @@ export function usePainelAdmin() {
     limparPagamento,
     copiarPix,
     removerSolicitacao,
+    criarSolicitacaoManual,
     alternarCard,
     obterHistoricoSolicitante,
     formatarCampoCaixa
