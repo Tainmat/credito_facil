@@ -599,7 +599,7 @@ export function usePainelAdmin() {
     telefone: string
     valor: string
     pix: string
-    dataPagamento: string
+    dataPagamento: string | null
     contatoNome: string
     contatoCpf: string
     contatoTelefone: string
@@ -608,6 +608,7 @@ export function usePainelAdmin() {
     try {
       await criarSolicitacaoMutation.mutateAsync({
         id: `MAN-${Date.now()}`,
+        status: 'Pix Feito',
         tipoSolicitacao: 'credito',
         nome: params.nome,
         cpf: params.cpf,
@@ -623,6 +624,10 @@ export function usePainelAdmin() {
       return true
     } catch (err) {
       console.error('Erro ao criar solicitação manual:', err)
+      alert(
+        'Erro ao criar solicitação manual: ' +
+          (err instanceof Error ? err.message : 'Erro desconhecido')
+      )
       return false
     }
   }

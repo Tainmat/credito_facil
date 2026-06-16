@@ -31,7 +31,7 @@ interface NovoEmprestimoModalProps {
     telefone: string
     valor: string
     pix: string
-    dataPagamento: string
+    dataPagamento: string | null
     contatoNome: string
     contatoCpf: string
     contatoTelefone: string
@@ -269,7 +269,7 @@ export function NovoEmprestimoModal({
         telefone,
         valor,
         pix,
-        dataPagamento: dataPagamento ? formatISO(dataPagamento) : '',
+        dataPagamento: dataPagamento ? formatISO(dataPagamento) : null,
         contatoNome,
         contatoCpf,
         contatoTelefone,

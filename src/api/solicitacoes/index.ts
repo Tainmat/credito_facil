@@ -130,6 +130,7 @@ export async function getSolicitacoes(): Promise<Solicitacao[]> {
 
 export interface CriarSolicitacaoParams {
   id: string
+  status?: StatusSolicitacao
   tipoSolicitacao: TipoSolicitacao
   nome: string
   cpf: string
@@ -175,25 +176,28 @@ export async function createSolicitacao(params: CriarSolicitacaoParams) {
     }
   }
 
-  const { data, error } = await supabase.from('solicitacoes').insert({
-    id: params.id,
-    status: 'Pendente',
-    tipo_solicitacao: params.tipoSolicitacao,
-    solicitante_nome: params.nome,
-    solicitante_cpf: params.cpf,
-    solicitante_telefone: params.telefone,
-    solicitante_valor: params.valor,
-    solicitante_pix: params.pix,
-    solicitante_data_pagamento: params.dataPagamento,
-    boleto_nome: boleto?.nome ?? null,
-    boleto_tipo: boleto?.tipo ?? null,
-    boleto_tamanho: boleto?.tamanho ?? null,
-    boleto_storage_path: boleto?.caminho ?? null,
-    contato_nome: params.contatoNome,
-    contato_cpf: params.contatoCpf,
-    contato_telefone: params.contatoTelefone,
-    contato_relacionamento: params.contatoRelacionamento
-  })
+  const { data, error } = await supabase
+    .from('solicitacoes')
+    .insert({
+      id: params.id,
+      status: params.status || 'Pendente',
+      tipo_solicitacao: params.tipoSolicitacao,
+      solicitante_nome: params.nome,
+      solicitante_cpf: params.cpf,
+      solicitante_telefone: params.telefone,
+      solicitante_valor: params.valor,
+      solicitante_pix: params.pix,
+      solicitante_data_pagamento: params.dataPagamento,
+      boleto_nome: boleto?.nome ?? null,
+      boleto_tipo: boleto?.tipo ?? null,
+      boleto_tamanho: boleto?.tamanho ?? null,
+      boleto_storage_path: boleto?.caminho ?? null,
+      contato_nome: params.contatoNome,
+      contato_cpf: params.contatoCpf,
+      contato_telefone: params.contatoTelefone,
+      contato_relacionamento: params.contatoRelacionamento
+    })
+    .select()
 
   if (error) {
     if (boleto?.caminho) {
