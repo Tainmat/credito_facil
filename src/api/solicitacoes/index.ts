@@ -48,6 +48,7 @@ export type Solicitacao = {
     valor?: string
     pix?: string
     dataPagamento?: string
+    valorTotalAcordado?: string
   }
   contato?: {
     nome?: string
@@ -84,6 +85,16 @@ function criarCaminhoBoleto(id: string, arquivo: File): string {
 }
 
 export function mapearSolicitacao(db: DbSolicitacao): Solicitacao {
+  const relRaw = db.contato_relacionamento ?? ''
+  let valorTotalAcordado: string | undefined = undefined
+  let relacionamentoReal = relRaw
+
+  if (relRaw.startsWith('#VT:')) {
+    const parts = relRaw.split('|')
+    valorTotalAcordado = parts[0].replace('#VT:', '')
+    relacionamentoReal = parts.slice(1).join('|')
+  }
+
   return {
     id: db.id,
     status: db.status,
@@ -96,13 +107,14 @@ export function mapearSolicitacao(db: DbSolicitacao): Solicitacao {
       telefone: db.solicitante_telefone ?? undefined,
       valor: db.solicitante_valor?.toString() || '0',
       pix: db.solicitante_pix ?? undefined,
-      dataPagamento: db.solicitante_data_pagamento ?? undefined
+      dataPagamento: db.solicitante_data_pagamento ?? undefined,
+      valorTotalAcordado
     },
     contato: {
       nome: db.contato_nome ?? undefined,
       cpf: db.contato_cpf ?? undefined,
       telefone: db.contato_telefone ?? undefined,
-      relacionamento: db.contato_relacionamento ?? undefined
+      relacionamento: relacionamentoReal || undefined
     },
     boleto: {
       nome: db.boleto_nome ?? undefined,
@@ -138,6 +150,7 @@ export interface CriarSolicitacaoParams {
   valor: number
   pix: string
   dataPagamento: string | null
+  valorTotalAcordado?: string | null
   boletoArquivo?: File | null
   contatoNome: string
   contatoCpf: string
@@ -176,27 +189,41 @@ export async function createSolicitacao(params: CriarSolicitacaoParams) {
     }
   }
 
+  const contatoRelacionamentoFinal = params.valorTotalAcordado
+    ? `#VT:${params.valorTotalAcordado}|${params.contatoRelacionamento}`
+    : params.contatoRelacionamento
+
+  const insertData: any = {
+    id: params.id,
+    status: params.status || 'Pendente',
+    solicitante_nome: params.nome,
+    solicitante_cpf: params.cpf,
+    solicitante_telefone: params.telefone,
+    solicitante_valor: params.valor,
+    solicitante_pix: params.pix,
+    solicitante_data_pagamento: params.dataPagamento,
+    contato_nome: params.contatoNome,
+    contato_cpf: params.contatoCpf,
+    contato_telefone: params.contatoTelefone,
+    contato_relacionamento: contatoRelacionamentoFinal
+  }
+
+  // Só adiciona tipo_solicitacao se for diferente de credito (para compatibilidade)
+  if (params.tipoSolicitacao && params.tipoSolicitacao !== 'credito') {
+    insertData.tipo_solicitacao = params.tipoSolicitacao
+  }
+
+  // Só adiciona campos de boleto se eles existirem (evita erro em DBs antigos)
+  if (params.tipoSolicitacao === 'boleto' && boleto) {
+    insertData.boleto_nome = boleto.nome
+    insertData.boleto_tipo = boleto.tipo
+    insertData.boleto_tamanho = boleto.tamanho
+    insertData.boleto_storage_path = boleto.caminho
+  }
+
   const { data, error } = await supabase
     .from('solicitacoes')
-    .insert({
-      id: params.id,
-      status: params.status || 'Pendente',
-      tipo_solicitacao: params.tipoSolicitacao,
-      solicitante_nome: params.nome,
-      solicitante_cpf: params.cpf,
-      solicitante_telefone: params.telefone,
-      solicitante_valor: params.valor,
-      solicitante_pix: params.pix,
-      solicitante_data_pagamento: params.dataPagamento,
-      boleto_nome: boleto?.nome ?? null,
-      boleto_tipo: boleto?.tipo ?? null,
-      boleto_tamanho: boleto?.tamanho ?? null,
-      boleto_storage_path: boleto?.caminho ?? null,
-      contato_nome: params.contatoNome,
-      contato_cpf: params.contatoCpf,
-      contato_telefone: params.contatoTelefone,
-      contato_relacionamento: params.contatoRelacionamento
-    })
+    .insert(insertData)
     .select()
 
   if (error) {
@@ -241,6 +268,32 @@ export async function updateSolicitacaoPagamento(
       pagamento_pago: params.pago,
       pagamento_valor_pago: params.valorPago,
       pagamento_pago_em: params.pagoEm,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', params.id)
+
+  if (error) throw error
+  return data
+}
+
+export interface AtualizarDadosParams {
+  id: string
+  dataPagamento: string | null
+  valorTotalAcordado?: string | null
+  contatoRelacionamentoOriginal?: string | null
+}
+
+export async function updateSolicitacaoDados(params: AtualizarDadosParams) {
+  const relOriginal = params.contatoRelacionamentoOriginal || ''
+  const contatoRelacionamentoFinal = params.valorTotalAcordado
+    ? `#VT:${params.valorTotalAcordado}|${relOriginal}`
+    : relOriginal
+
+  const { data, error } = await supabase
+    .from('solicitacoes')
+    .update({
+      solicitante_data_pagamento: params.dataPagamento,
+      contato_relacionamento: contatoRelacionamentoFinal,
       updated_at: new Date().toISOString()
     })
     .eq('id', params.id)

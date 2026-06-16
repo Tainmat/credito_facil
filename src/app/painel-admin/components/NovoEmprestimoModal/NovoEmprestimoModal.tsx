@@ -32,6 +32,7 @@ interface NovoEmprestimoModalProps {
     valor: string
     pix: string
     dataPagamento: string | null
+    valorTotal?: string | null
     contatoNome: string
     contatoCpf: string
     contatoTelefone: string
@@ -44,7 +45,7 @@ type CalendarProps = {
   isOpen: boolean
   selectedDate: Date | null
   minDate: Date
-  maxDate: Date
+  maxDate?: Date
   onSelect: (d: Date) => void
   onClear: () => void
   onClose: () => void
@@ -94,11 +95,13 @@ function Calendar({
     activeMonth.getMonth() + 1,
     1
   )
-  const nextDisabled = nextStart > maxDate
+  const nextDisabled = maxDate ? nextStart > maxDate : false
   const todayDate = startOfDay(new Date())
 
   function isDisabled(d: Date) {
-    return d < minDate || d > maxDate
+    if (d < minDate) return true
+    if (maxDate && d > maxDate) return true
+    return false
   }
 
   return (
@@ -233,6 +236,7 @@ export function NovoEmprestimoModal({
   const [cpf, setCpf] = useState('')
   const [telefone, setTelefone] = useState('')
   const [valor, setValor] = useState('')
+  const [valorTotal, setValorTotal] = useState('')
   const [pix, setPix] = useState('')
   const [dataPagamento, setDataPagamento] = useState<Date | null>(null)
   const [calendarOpen, setCalendarOpen] = useState(false)
@@ -245,7 +249,8 @@ export function NovoEmprestimoModal({
   const [enviando, setEnviando] = useState(false)
 
   const minDate = startOfDay(new Date())
-  const maxDate = addDays(minDate, 28)
+  // Prazo livre: removemos o maxDate ou definimos algo bem distante
+  const maxDate = undefined
 
   const isValid =
     nome.trim() !== '' &&
@@ -268,6 +273,7 @@ export function NovoEmprestimoModal({
         cpf,
         telefone,
         valor,
+        valorTotal: valorTotal.trim() !== '' ? valorTotal : undefined,
         pix,
         dataPagamento: dataPagamento ? formatISO(dataPagamento) : null,
         contatoNome,
@@ -365,6 +371,21 @@ export function NovoEmprestimoModal({
                 />
               </div>
               <div className="relative">
+                <DollarSign className="absolute left-3 top-2.5 w-4 h-4 text-zinc-500/50" />
+                <input
+                  type="text"
+                  placeholder="A Receber"
+                  value={valorTotal}
+                  onChange={(e) =>
+                    setValorTotal(formatarCampoCaixa(e.target.value))
+                  }
+                  className={`${inputCls} border-dashed border-emerald-500/30`}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="relative">
                 <CalendarDays className="absolute left-3 top-2.5 w-4 h-4 text-zinc-500" />
                 <button
                   type="button"
@@ -376,17 +397,16 @@ export function NovoEmprestimoModal({
                     : 'Pagamento'}
                 </button>
               </div>
-            </div>
-
-            <div className="relative">
-              <Zap className="absolute left-3 top-2.5 w-4 h-4 text-zinc-500" />
-              <input
-                type="text"
-                placeholder="Chave PIX"
-                value={pix}
-                onChange={(e) => setPix(e.target.value)}
-                className={inputCls}
-              />
+              <div className="relative">
+                <Zap className="absolute left-3 top-2.5 w-4 h-4 text-zinc-500" />
+                <input
+                  type="text"
+                  placeholder="Chave PIX"
+                  value={pix}
+                  onChange={(e) => setPix(e.target.value)}
+                  className={inputCls}
+                />
+              </div>
             </div>
           </div>
 

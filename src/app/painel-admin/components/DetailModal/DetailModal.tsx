@@ -28,6 +28,7 @@ import {
   formatarDataPagamentoRegistrado,
   formatarDataInputPagamento,
   criarDataPagamentoManual,
+  formatarCampoCaixa,
   numeroMoeda,
   htmlEscape
 } from '../../usePainelAdmin'
@@ -49,6 +50,12 @@ interface DetailModalProps {
     dataPagamento: Date
   ) => void
   onLimparPagamento: (id: string) => void
+  onAtualizarDados: (
+    id: string,
+    dataPagamento: string | null,
+    valorTotalAcordado: string | null,
+    contatoRelacionamentoOriginal: string | null
+  ) => Promise<boolean>
   historico: HistoricoSolicitante
 }
 
@@ -60,6 +67,7 @@ export function DetailModal({
   onRemover,
   onRegistrarPagamento,
   onLimparPagamento,
+  onAtualizarDados,
   historico
 }: DetailModalProps) {
   const [openStatusMenu, setOpenStatusMenu] = useState(false)
@@ -69,6 +77,13 @@ export function DetailModal({
   const [dataPagoInput, setDataPagoInput] = useState(
     formatarDataInputPagamento(item.pagamento?.pagoEm)
   )
+  const [dataPagamentoEdit, setDataPagamentoEdit] = useState(
+    item.solicitante?.dataPagamento ?? ''
+  )
+  const [valorTotalEdit, setValorTotalEdit] = useState(
+    item.solicitante?.valorTotalAcordado ?? ''
+  )
+  const [editandoDados, setEditandoDados] = useState(false)
   const [abrindoBoleto, setAbrindoBoleto] = useState(false)
 
   const status = normalizarStatus(item.status)
@@ -88,6 +103,23 @@ export function DetailModal({
     const data = criarDataPagamentoManual(dataPagoInput)
     if (!data) return
     onRegistrarPagamento(item.id, valorPagoInput, data)
+  }
+
+  async function handleSalvarDados() {
+    setEditandoDados(true)
+    try {
+      const success = await onAtualizarDados(
+        item.id,
+        dataPagamentoEdit || null,
+        valorTotalEdit || null,
+        item.contato?.relacionamento || null
+      )
+      if (success) {
+        alert('Dados atualizados com sucesso!')
+      }
+    } finally {
+      setEditandoDados(false)
+    }
   }
 
   async function handleAbrirBoleto() {
@@ -309,11 +341,39 @@ export function DetailModal({
                   {htmlEscape(item.solicitante?.pix) || '—'}
                 </dd>
               </div>
-              <div className="flex justify-between">
-                <dt className="text-zinc-600">Pagamento</dt>
-                <dd className="text-zinc-200">
-                  {formatarDataCurta(item.solicitante?.dataPagamento)}
-                </dd>
+
+              <div className="pt-2 mt-2 border-t border-zinc-800 space-y-2">
+                <div>
+                  <label className="text-zinc-600 block mb-1">Pagamento</label>
+                  <input
+                    type="date"
+                    value={dataPagamentoEdit}
+                    onChange={(e) => setDataPagamentoEdit(e.target.value)}
+                    className="field w-full rounded-lg py-1 px-2 text-[11px] text-white"
+                  />
+                </div>
+                <div>
+                  <label className="text-zinc-600 block mb-1">
+                    A Receber Manual
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Deixe vazio para automático"
+                    value={valorTotalEdit}
+                    onChange={(e) =>
+                      setValorTotalEdit(formatarCampoCaixa(e.target.value))
+                    }
+                    className="field w-full rounded-lg py-1 px-2 text-[11px] text-white"
+                  />
+                </div>
+                <button
+                  type="button"
+                  disabled={editandoDados}
+                  onClick={handleSalvarDados}
+                  className="w-full py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-[10px] font-bold hover:bg-emerald-500/20 disabled:opacity-50 transition-colors"
+                >
+                  {editandoDados ? 'Salvando...' : 'Salvar Alterações'}
+                </button>
               </div>
             </dl>
           </div>

@@ -134,6 +134,7 @@ export default function PainelAdminPage() {
     copiarPix,
     removerSolicitacao,
     criarSolicitacaoManual,
+    atualizarDadosEmprestimo,
     obterHistoricoSolicitante
   } = usePainelAdmin()
 
@@ -589,6 +590,7 @@ export default function PainelAdminPage() {
           onRemover={removerSolicitacao}
           onRegistrarPagamento={registrarPagamento}
           onLimparPagamento={limparPagamento}
+          onAtualizarDados={atualizarDadosEmprestimo}
           historico={obterHistoricoSolicitante(modalAberta)}
         />
       )}

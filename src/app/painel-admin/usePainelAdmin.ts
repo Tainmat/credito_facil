@@ -22,6 +22,7 @@ import { useRegistrarPagamentoMutation } from '../../hooks/services/mutations/us
 import { useLimparPagamentoMutation } from '../../hooks/services/mutations/useLimparPagamentoMutation'
 import { useRemoverSolicitacaoMutation } from '../../hooks/services/mutations/useRemoverSolicitacaoMutation'
 import { useCriarSolicitacaoMutation } from '../../hooks/services/mutations/useCriarSolicitacaoMutation'
+import { useAtualizarSolicitacaoDadosMutation } from '../../hooks/services/mutations/useAtualizarSolicitacaoDadosMutation'
 
 // Re-exportação de tipos para manter retrocompatibilidade com componentes das páginas
 export type {
@@ -208,7 +209,15 @@ export function calcularValorAtualizado(
   dataReferenciaManual?: Date | null
 ): ResumoJuros {
   const valorEmprestado = numeroMoeda(item.solicitante?.valor)
-  const jurosFixo = valorEmprestado * TAXA_JUROS_FIXO
+  const valorTotalAcordado = item.solicitante?.valorTotalAcordado
+    ? numeroMoeda(item.solicitante.valorTotalAcordado)
+    : 0
+
+  const jurosFixo =
+    valorTotalAcordado > 0
+      ? valorTotalAcordado - valorEmprestado
+      : valorEmprestado * TAXA_JUROS_FIXO
+
   const valorComJuros = valorEmprestado + jurosFixo
 
   const atraso = diasDeAtraso(
@@ -344,6 +353,7 @@ export function usePainelAdmin() {
   const limparPagamentoMutation = useLimparPagamentoMutation()
   const removerSolicitacaoMutation = useRemoverSolicitacaoMutation()
   const criarSolicitacaoMutation = useCriarSolicitacaoMutation()
+  const atualizarDadosMutation = useAtualizarSolicitacaoDadosMutation()
 
   // Calculate current caixa balance from the transaction history
   const totalAportes = transacoesCaixa
@@ -600,6 +610,7 @@ export function usePainelAdmin() {
     valor: string
     pix: string
     dataPagamento: string | null
+    valorTotal?: string | null
     contatoNome: string
     contatoCpf: string
     contatoTelefone: string
@@ -616,18 +627,55 @@ export function usePainelAdmin() {
         valor: numeroMoeda(params.valor),
         pix: params.pix,
         dataPagamento: params.dataPagamento,
+        valorTotalAcordado: params.valorTotal,
         contatoNome: params.contatoNome,
         contatoCpf: params.contatoCpf,
         contatoTelefone: params.contatoTelefone,
         contatoRelacionamento: params.contatoRelacionamento
       })
       return true
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao criar solicitação manual:', err)
-      alert(
-        'Erro ao criar solicitação manual: ' +
-          (err instanceof Error ? err.message : 'Erro desconhecido')
-      )
+      const msg =
+        err?.message ||
+        err?.error_description ||
+        (err && typeof err === 'object' ? JSON.stringify(err) : String(err))
+      alert('Erro ao criar solicitação manual: ' + msg)
+      return false
+    }
+  }
+
+  async function atualizarDadosEmprestimo(
+    id: string,
+    dataPagamento: string | null,
+    valorTotalAcordado: string | null,
+    contatoRelacionamentoOriginal: string | null
+  ) {
+    try {
+      await atualizarDadosMutation.mutateAsync({
+        id,
+        dataPagamento,
+        valorTotalAcordado,
+        contatoRelacionamentoOriginal
+      })
+
+      if (modalAberta?.id === id) {
+        setModalAberta((m) => {
+          if (!m) return null
+          return {
+            ...m,
+            solicitante: {
+              ...m.solicitante,
+              dataPagamento: dataPagamento ?? undefined,
+              valorTotalAcordado: valorTotalAcordado ?? undefined
+            },
+            atualizadoEm: new Date().toISOString()
+          }
+        })
+      }
+      return true
+    } catch (err) {
+      console.error('Erro ao atualizar dados do empréstimo:', err)
       return false
     }
   }
@@ -734,27 +782,30 @@ export function usePainelAdmin() {
 
   const caixaValor = numeroMoeda(inputCaixa)
   const totalDisponibilizado = solicitacoes
-    .filter((s: Solicitacao) => normalizarStatus(s.status) === 'Pix Feito')
+    .filter(
+      (s: Solicitacao) =>
+        normalizarStatus(s.status) === 'Pix Feito' && !s.pagamento?.pago
+    )
     .reduce(
       (acc: number, s: Solicitacao) => acc + numeroMoeda(s.solicitante?.valor),
       0
     )
 
   const totalGanho = solicitacoes
-    .filter(
-      (s: Solicitacao) =>
-        normalizarStatus(s.status) === 'Pix Feito' && s.pagamento?.pago
-    )
+    .filter((s: Solicitacao) => normalizarStatus(s.status) === 'Pix Feito')
     .reduce((acc: number, s: Solicitacao) => {
       const resumo = calcularValorAtualizado(s)
-      const pago = numeroMoeda(s.pagamento?.valorPago)
-      return acc + (pago - resumo.valorEmprestado)
+      if (s.pagamento?.pago) {
+        const pago = numeroMoeda(s.pagamento?.valorPago)
+        return acc + (pago - resumo.valorEmprestado)
+      }
+      return acc + (resumo.valorAtualizado - resumo.valorEmprestado)
     }, 0)
 
   const financeiro = {
     disponibilizado: totalDisponibilizado,
     ganho: totalGanho,
-    disponivel: caixaValor - totalDisponibilizado
+    disponivel: caixaValor - totalDisponibilizado + totalGanho
   }
 
   return {
@@ -786,6 +837,7 @@ export function usePainelAdmin() {
     copiarPix,
     removerSolicitacao,
     criarSolicitacaoManual,
+    atualizarDadosEmprestimo,
     alternarCard,
     obterHistoricoSolicitante,
     formatarCampoCaixa
